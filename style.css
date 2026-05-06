@@ -76,8 +76,8 @@ body {
 
 #menu {
   position: fixed;
-  top: 16px;
-  left: 16px;
+  top: 0;
+  left: 0;
   z-index: 100;
 }
 #menu-btn {
@@ -88,7 +88,7 @@ body {
   font-size: 13px;
   letter-spacing: 2px;
   cursor: pointer;
-  padding: 4px 8px;
+  padding: 14px 16px;
   user-select: none;
   transition: color 0.2s;
 }
