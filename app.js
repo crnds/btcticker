@@ -12,6 +12,16 @@ const EXCHANGES = {
   bitstamp: {
     label: 'Bitstamp',
     url: 'wss://ws.bitstamp.net',
+    async init() {
+      try {
+        const r = await fetch('https://www.bitstamp.net/api/v2/ticker/btcusd/');
+        const d = await r.json();
+        const change = d.open
+          ? ((parseFloat(d.last) - parseFloat(d.open)) / parseFloat(d.open)) * 100
+          : null;
+        return { change };
+      } catch { return { change: null }; }
+    },
     subscribe(ws) {
       ws.send(JSON.stringify({ event: 'bts:subscribe', data: { channel: 'live_trades_btcusd' } }));
     },
@@ -156,7 +166,7 @@ if (history.length) {
 
 // --- WebSocket ---
 function connect(key) {
-  if (activeWs) { activeWs.onclose = null; activeWs.close(); activeWs = null; }
+  if (activeWs) { activeWs.onclose = null; activeWs.onmessage = null; activeWs.close(); activeWs = null; }
   retryMs = 1000;
   setStatus('connecting');
 
@@ -164,10 +174,14 @@ function connect(key) {
   const ws = new WebSocket(exchange.url);
   activeWs = ws;
 
-  ws.onopen = () => {
+  ws.onopen = async () => {
     retryMs = 1000;
     setStatus('live');
     if (exchange.subscribe) exchange.subscribe(ws);
+    if (exchange.init) {
+      const { change } = await exchange.init();
+      if (change !== null && !isNaN(change)) latestChange = change;
+    }
   };
 
   ws.onerror = () => ws.close();
