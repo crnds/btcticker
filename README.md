@@ -12,7 +12,7 @@ Binance WebSocket ──► app.js (browser) ──► requestAnimationFrame ─
  ~100ms updates        24hr % change         2/s max
 ```
 
-The browser connects directly to Binance's public WebSocket stream. The `btcusdt@ticker` event includes both the current price (`c`) and 24hr change percentage (`P`) — no backend or history file needed.
+The browser connects directly to Binance's public WebSocket stream. The `btcusdt@ticker` event includes both the current price (`c`) and 24hr change percentage (`P`). Price snapshots are saved to `localStorage` every minute and pruned to a rolling 24hr window — the last known price is shown instantly on load before the WebSocket connects.
 
 ---
 
@@ -22,7 +22,7 @@ The browser connects directly to Binance's public WebSocket stream. The `btcusdt
 btcticker/
 ├── index.html               — markup: price div + status bar
 ├── style.css                — layout, Bebas Neue font, decimal/change styling
-├── app.js                   — Binance WebSocket client, formatter, DOM updates
+├── app.js                   — Binance WebSocket client, localStorage history, DOM updates
 └── assets/
     └── bebas-neue-400.woff2 — self-hosted font (13.7 KB, no Google Fonts)
 ```
@@ -66,6 +66,12 @@ firefox --kiosk index.html
 - 24hr change stacked above the decimal, green `+` / red `−`
 - Status bar: pulsing green dot when live, red when reconnecting, stale timestamp when data stops
 - Exponential backoff reconnect: 1s → 2s → 4s … capped at 16s
+
+---
+
+## Local Storage
+
+Price and 24hr change are snapshotted to `localStorage` (`btcticker_history`) every minute. Entries older than 24hrs are pruned automatically. On next page load, the last known price renders immediately — no blank screen while the WebSocket connects.
 
 ---
 
