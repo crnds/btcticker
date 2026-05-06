@@ -84,11 +84,9 @@ body {
   background: none;
   border: none;
   color: #555;
-  font-family: monospace;
-  font-size: 13px;
-  letter-spacing: 2px;
   cursor: pointer;
   padding: 14px 16px;
+  line-height: 0;
   user-select: none;
   transition: color 0.2s;
 }
