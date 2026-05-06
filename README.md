@@ -1,6 +1,13 @@
-# btcticker
+```
+██████╗ ████████╗ ██████╗ ████████╗██╗ ██████╗ ██╗  ██╗███████╗██████╗ 
+██╔══██╗╚══██╔══╝██╔════╝ ╚══██╔══╝██║██╔════╝ ██║ ██╔╝██╔════╝██╔══██╗
+██████╔╝   ██║   ██║         ██║   ██║██║      █████╔╝ █████╗  ██████╔╝
+██╔══██╗   ██║   ██║         ██║   ██║██║      ██╔═██╗ ██╔══╝  ██╔══██╗
+██████╔╝   ██║   ╚██████╗    ██║   ██║╚██████╗ ██║  ██╗███████╗██║  ██║
+╚═════╝    ╚═╝    ╚═════╝    ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+```
 
-Real-time BTC/USDT price ticker. Full-viewport number, 24hr change percentage, WebSocket status bar. No server, no build step, no dependencies.
+*Real-time BTC/USDT price ticker — static, no server, no dependencies.*
 
 ---
 
