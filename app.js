@@ -251,13 +251,20 @@ function isFullscreen() {
   return !!(document.fullscreenElement || document.webkitFullscreenElement);
 }
 
+function enterFullscreen() {
+  const el = document.documentElement;
+  if      (el.requestFullscreen)       el.requestFullscreen();
+  else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+}
+
+function exitFullscreen() {
+  if      (document.exitFullscreen)          document.exitFullscreen();
+  else if (document.webkitExitFullscreen)    document.webkitExitFullscreen();
+  else if (document.webkitCancelFullScreen)  document.webkitCancelFullScreen();
+}
+
 function toggleFullscreen() {
-  if (!isFullscreen()) {
-    const el = document.documentElement;
-    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-  } else {
-    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-  }
+  isFullscreen() ? exitFullscreen() : enterFullscreen();
 }
 
 function onFullscreenChange() {
