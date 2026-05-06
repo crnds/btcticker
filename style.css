@@ -74,6 +74,22 @@ body {
   50%       { opacity: 0.3; }
 }
 
+#fullscreen-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  background: none;
+  border: none;
+  color: #555;
+  cursor: pointer;
+  padding: 14px 16px;
+  line-height: 0;
+  user-select: none;
+  z-index: 100;
+  transition: color 0.2s;
+}
+#fullscreen-btn:hover { color: #aaa; }
+
 #menu {
   position: fixed;
   top: 0;

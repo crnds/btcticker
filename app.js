@@ -241,6 +241,24 @@ menuList.addEventListener('click', (e) => {
   connect(key);
 });
 
+// --- Fullscreen ---
+const fsBtn  = document.getElementById('fullscreen-btn');
+const fsIcon = document.getElementById('fs-icon');
+const EXPAND_D   = 'M1 6V1H6M15 6V1H10M1 10V15H6M15 10V15H10';
+const COMPRESS_D = 'M6 1V6H1M10 1V6H15M6 15V10H1M10 15V10H15';
+
+fsBtn.addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  fsIcon.querySelector('path').setAttribute('d', document.fullscreenElement ? COMPRESS_D : EXPAND_D);
+});
+
 // --- Init ---
 updateActive();
 connect(currentExchange);
