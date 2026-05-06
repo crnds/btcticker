@@ -247,12 +247,21 @@ const fsIcon = document.getElementById('fs-icon');
 const EXPAND_D   = 'M1 6V1H6M15 6V1H10M1 10V15H6M15 10V15H10';
 const COMPRESS_D = 'M6 1V6H1M10 1V6H15M6 15V10H1M10 15V10H15';
 
+function isFullscreen() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen();
+  if (!isFullscreen()) {
+    const el = document.documentElement;
+    (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
   } else {
-    document.exitFullscreen();
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   }
+}
+
+function onFullscreenChange() {
+  fsIcon.querySelector('path').setAttribute('d', isFullscreen() ? COMPRESS_D : EXPAND_D);
 }
 
 fsBtn.addEventListener('click', toggleFullscreen);
@@ -261,9 +270,8 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
 });
 
-document.addEventListener('fullscreenchange', () => {
-  fsIcon.querySelector('path').setAttribute('d', document.fullscreenElement ? COMPRESS_D : EXPAND_D);
-});
+document.addEventListener('fullscreenchange',       onFullscreenChange);
+document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 
 // --- Init ---
 updateActive();
