@@ -123,3 +123,28 @@ body {
   font-size: 7px;
   vertical-align: middle;
 }
+
+#loading {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-family: monospace;
+  font-size: min(6vw, 14vh);
+  color: #2a2a2a;
+  letter-spacing: 4px;
+  user-select: none;
+}
+#loading.active { display: block; }
+#loading .d {
+  display: inline-block;
+  animation: dot-fade 1.2s ease-in-out infinite;
+  opacity: 0;
+}
+#loading .d:nth-child(2) { animation-delay: 0.2s; }
+#loading .d:nth-child(3) { animation-delay: 0.4s; }
+@keyframes dot-fade {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}

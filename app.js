@@ -75,12 +75,13 @@ let retryMs = 1000;
 let activeWs = null;
 
 // --- DOM ---
-const el       = document.getElementById('price');
-const pulse    = document.getElementById('ws-pulse');
-const label    = document.getElementById('ws-label');
-const time     = document.getElementById('ws-time');
-const menuBtn  = document.getElementById('menu-btn');
-const menuList = document.getElementById('menu-list');
+const el        = document.getElementById('price');
+const pulse     = document.getElementById('ws-pulse');
+const label     = document.getElementById('ws-label');
+const time      = document.getElementById('ws-time');
+const menuBtn   = document.getElementById('menu-btn');
+const menuList  = document.getElementById('menu-list');
+const loadingEl = document.getElementById('loading');
 
 // --- localStorage history ---
 const STORAGE_KEY = 'btcticker_history';
@@ -144,11 +145,13 @@ setInterval(() => {
   }
 }, 500);
 
-// show last known price on load before WS connects
+// show last known price on load, or loading animation if no history
 if (history.length) {
   const e = history[history.length - 1];
   latest = e.price; latestChange = e.change;
   el.innerHTML = fmt(latest, latestChange);
+} else {
+  loadingEl.classList.add('active');
 }
 
 // --- WebSocket ---
@@ -182,6 +185,7 @@ function connect(key) {
     latest = result.price;
     if (result.change !== null && !isNaN(result.change)) latestChange = result.change;
     lastUpdated = Date.now();
+    loadingEl.classList.remove('active');
 
     if (!history.length) {
       history.push({ ts: Date.now(), price: latest, change: latestChange });
@@ -218,6 +222,7 @@ menuList.addEventListener('click', (e) => {
   localStorage.setItem(EXCHANGE_KEY, key);
   latest = 0; latestChange = null; last = 0; lastUpdated = null;
   el.innerHTML = '';
+  loadingEl.classList.add('active');
   updateActive();
   connect(key);
 });
