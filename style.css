@@ -83,7 +83,7 @@ body {
 #menu-btn {
   background: none;
   border: none;
-  color: #333;
+  color: #555;
   font-family: monospace;
   font-size: 13px;
   letter-spacing: 2px;
@@ -92,7 +92,7 @@ body {
   user-select: none;
   transition: color 0.2s;
 }
-#menu-btn:hover { color: #888; }
+#menu-btn:hover { color: #aaa; }
 
 #menu-list {
   display: none;

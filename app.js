@@ -197,19 +197,22 @@ function updateActive() {
   );
 }
 
-menuBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  menuList.classList.toggle('open');
-  updateActive();
+function closeMenu() { menuList.classList.remove('open'); }
+function openMenu()  { updateActive(); menuList.classList.add('open'); }
+
+menuBtn.addEventListener('click', () => {
+  menuList.classList.contains('open') ? closeMenu() : openMenu();
 });
 
-document.addEventListener('click', () => menuList.classList.remove('open'));
+document.addEventListener('click', (e) => {
+  if (!menuBtn.contains(e.target) && !menuList.contains(e.target)) closeMenu();
+});
 
 menuList.addEventListener('click', (e) => {
   const li = e.target.closest('li');
   if (!li) return;
   const key = li.dataset.exchange;
-  menuList.classList.remove('open');
+  closeMenu();
   if (key === currentExchange) return;
   currentExchange = key;
   localStorage.setItem(EXCHANGE_KEY, key);
