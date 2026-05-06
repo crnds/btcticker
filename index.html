@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BTC/USDT</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="price"></div>
+<div id="ws-status">
+  <span id="ws-pulse"></span>
+  <span id="ws-label">connecting…</span>
+  <span id="ws-time"></span>
+</div>
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
+<script>
+  const el    = document.getElementById("price");
+  const pulse = document.getElementById("ws-pulse");
+  const label = document.getElementById("ws-label");
+  const time  = document.getElementById("ws-time");
+
+  let latest = 0, latestChange = null, last = 0, lastUpdated = null, pending = false;
+
+  function setStatus(state) {
+    pulse.className = state;
+    label.textContent = state === "live" ? "live" : state === "reconnecting" ? "reconnecting…" : "connecting…";
+  }
+
+  setInterval(() => {
+    if (!lastUpdated) return;
+    const secs = Math.floor((Date.now() - lastUpdated) / 1000);
+    time.textContent = secs < 5 ? "just now" : secs + "s ago";
+  }, 1000);
+
+  function fmt(n, change) {
+    const [int, dec] = n.toFixed(2).split(".");
+    const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+
+    let chgHtml = "";
+    if (change !== null && change !== undefined) {
+      const sign = change >= 0 ? "+" : "";
+      const cls  = change >= 0 ? "pos" : "neg";
+      chgHtml = `<span class="chg ${cls}">${sign}${Math.round(change)}%</span>`;
+    }
+
+    return intFmt + `<span class="dec-wrap">${chgHtml}<span class="dec">.${dec}</span></span>`;
+  }
+
+  setInterval(() => {
+    if (latest === last) return;
+    last = latest;
+    if (!pending) {
+      pending = true;
+      requestAnimationFrame(() => { el.innerHTML = fmt(last, latestChange); pending = false; });
+    }
+  }, 500);
+
+  const socket = io("http://localhost:3000", { transports: ["websocket"], upgrade: false });
+
+  socket.on("connect",    () => setStatus("live"));
+  socket.on("disconnect", () => setStatus("reconnecting"));
+
+  socket.on("tick", ({ price, change }) => {
+    latest       = price;
+    latestChange = change;
+    lastUpdated  = Date.now();
+  });
+</script>
+</body>
+</html>

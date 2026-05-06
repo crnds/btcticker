@@ -1,0 +1,12 @@
+{
+  "name": "bitcointicker",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.0"
+  }
+}
