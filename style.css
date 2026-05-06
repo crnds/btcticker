@@ -130,7 +130,7 @@ body {
   transform: translate(-50%, -50%);
   font-family: monospace;
   font-size: min(6vw, 14vh);
-  color: #2a2a2a;
+  color: #e0e0e0;
   letter-spacing: 4px;
   user-select: none;
 }
