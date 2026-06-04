@@ -231,6 +231,7 @@ menuList.addEventListener('click', (e) => {
   const li = e.target.closest('li');
   if (!li) return;
   const key = li.dataset.exchange;
+  if (!key) return;
   closeMenu();
   if (key === currentExchange) return;
   currentExchange = key;
