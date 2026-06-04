@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dashboard — BTC Ticker</title>
+  <style>
+    :root {
+      --bg: #08090d;
+      --surface: #0f1117;
+      --surface-alt: #161b27;
+      --border: rgba(255,255,255,0.07);
+      --text: #f1f5f9;
+      --text2: #94a3b8;
+      --muted: #64748b;
+      --accent: #F4620E;
+      --bull: #00e676;
+      --bear: #ff1744;
+      --warn: #fbbf24;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      height: 52px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header h1 { font-size: 15px; font-weight: 500; }
+    header .sep { color: var(--muted); }
+    header a { color: var(--text2); text-decoration: none; font-size: 13px; }
+    header a:hover { color: var(--text); }
+
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 28px 24px;
+    }
+
+    .section + .section { margin-top: 36px; }
+    .section-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      margin-bottom: 12px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+    }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+    }
+    .card .label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
+    .card .value {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+    }
+    .card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+    .bull  { color: var(--bull); }
+    .bear  { color: var(--bear); }
+    .muted { color: var(--muted); }
+
+    .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    .dot.bull  { background: var(--bull); }
+    .dot.bear  { background: var(--bear); }
+    .dot.warn  { background: var(--warn); }
+    .dot.muted { background: var(--muted); }
+
+    /* CDC chart */
+    .cdc-chart {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 20px 12px;
+    }
+    .cdc-chart-inner {
+      position: relative;
+      display: flex;
+      align-items: flex-start;
+      gap: 4px;
+      height: 160px;
+    }
+    .cdc-chart-inner::after {
+      content: '';
+      position: absolute;
+      left: 0; right: 0;
+      top: 80px;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      pointer-events: none;
+    }
+    .db-slot {
+      flex: 1;
+      height: 160px;
+      display: flex;
+      flex-direction: column;
+    }
+    .db-block {
+      width: 100%;
+      border-radius: 2px;
+    }
+    .db-block.bull  { background: var(--bull); }
+    .db-block.bear  { background: var(--bear); }
+    .db-block.today { opacity: 0.45; }
+    .cdc-labels {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 8px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Notice */
+    .notice {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text2);
+      margin-bottom: 16px;
+    }
+    .notice.warn  { border-color: rgba(251,191,36,0.35); color: #fde68a; }
+    .notice.stale { border-color: rgba(244,63,94,0.35);  color: #fecdd3; }
+    .notice strong { color: var(--text); font-weight: 500; }
+
+    /* Table */
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      text-align: left;
+      padding: 9px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+    th {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text2);
+      background: var(--surface-alt);
+    }
+    tr:last-child td { border-bottom: none; }
+
+    code {
+      font-family: monospace;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    @media (max-width: 600px) {
+      main { padding: 20px 16px; }
+      .grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>BTC Ticker — Dashboard</h1>
+  <span class="sep">|</span>
+  <a href="index.html">← Back to ticker</a>
+</header>
+
+<main>
+
+  <div id="freshness-notice" class="notice">Checking data freshness…</div>
+
+  <!-- CDC file stats -->
+  <section class="section">
+    <div class="section-title">CDC data file — data/cdc.js</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Generated</div>
+        <div class="value" id="cdc-generated">—</div>
+        <div class="sub" id="cdc-generated-sub"></div>
+      </div>
+      <div class="card">
+        <div class="label">Current signal</div>
+        <div class="value" id="cdc-signal">—</div>
+        <div class="sub">today (incomplete candle)</div>
+      </div>
+      <div class="card">
+        <div class="label">EMA diff today</div>
+        <div class="value" id="cdc-diff">—</div>
+        <div class="sub">|EMA12 − EMA26|</div>
+      </div>
+      <div class="card">
+        <div class="label">Current streak</div>
+        <div class="value" id="cdc-streak">—</div>
+        <div class="sub" id="cdc-streak-sub"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 30-day CDC chart -->
+  <section class="section">
+    <div class="section-title">30-day CDC strip</div>
+    <div class="cdc-chart">
+      <div class="cdc-chart-inner" id="cdc-chart"></div>
+      <div class="cdc-labels">
+        <span id="cdc-label-start">—</span>
+        <span id="cdc-label-end">today</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Signal breakdown -->
+  <section class="section">
+    <div class="section-title">Signal breakdown — last 30 days</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Bullish days</div>
+        <div class="value bull" id="bull-count">—</div>
+        <div class="sub" id="bull-pct"></div>
+      </div>
+      <div class="card">
+        <div class="label">Bearish days</div>
+        <div class="value bear" id="bear-count">—</div>
+        <div class="sub" id="bear-pct"></div>
+      </div>
+      <div class="card">
+        <div class="label">Avg EMA diff (bull days)</div>
+        <div class="value" id="bull-avg-diff">—</div>
+        <div class="sub">average separation</div>
+      </div>
+      <div class="card">
+        <div class="label">Avg EMA diff (bear days)</div>
+        <div class="value" id="bear-avg-diff">—</div>
+        <div class="sub">average separation</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Block detail table -->
+  <section class="section">
+    <div class="section-title">Block detail — newest first</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Signal</th>
+            <th>EMA Diff</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody id="block-table">
+          <tr><td colspan="5" style="color:var(--muted);padding:20px 16px;">No CDC data loaded.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Price history -->
+  <section class="section">
+    <div class="section-title">Price history — localStorage</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Entries stored</div>
+        <div class="value" id="hist-count">—</div>
+        <div class="sub">1 snapshot per minute</div>
+      </div>
+      <div class="card">
+        <div class="label">Latest price</div>
+        <div class="value" id="hist-latest">—</div>
+        <div class="sub" id="hist-latest-sub"></div>
+      </div>
+      <div class="card">
+        <div class="label">24hr high</div>
+        <div class="value bull" id="hist-high">—</div>
+        <div class="sub" id="hist-high-sub"></div>
+      </div>
+      <div class="card">
+        <div class="label">24hr low</div>
+        <div class="value bear" id="hist-low">—</div>
+        <div class="sub" id="hist-low-sub"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Maintenance -->
+  <section class="section">
+    <div class="section-title">Maintenance</div>
+    <div class="notice">
+      Refresh CDC data: <code>python3 fetch_cdc.py</code> — run daily from the project directory.
+      The local file is the cold-start fallback; localStorage caches it for 1 hour.
+    </div>
+  </section>
+
+</main>
+
+<script src="data/cdc.js"></script>
+<script>
+  // ── Helpers ───────────────────────────────────────────
+  function fmtUSD(n) {
+    return '$' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+  }
+  function fmtDateTime(ts) {
+    return new Date(ts).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  }
+  function fmtDate(ts) {
+    return new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }
+  function hoursAgo(dateStr) {
+    return (Date.now() - new Date(dateStr).getTime()) / 3_600_000;
+  }
+  function fmtAge(h) {
+    if (h < 1)  return Math.round(h * 60) + ' min ago';
+    if (h < 24) return h.toFixed(1) + ' hrs ago';
+    return Math.floor(h / 24) + ' days ago';
+  }
+  function avg(arr) {
+    return arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+  }
+
+  // ── CDC data file ─────────────────────────────────────
+  const cdc     = window.LOCAL_CDC;
+  const noticeEl = document.getElementById('freshness-notice');
+
+  if (!cdc || !cdc.blocks) {
+    noticeEl.className = 'notice stale';
+    noticeEl.innerHTML = '<strong>data/cdc.js not generated yet.</strong> Run <code>python3 fetch_cdc.py</code> to populate it.';
+  } else {
+    const age    = hoursAgo(cdc.generated);
+    const blocks = cdc.blocks;
+
+    // Freshness notice
+    if (age > 48) {
+      noticeEl.className = 'notice stale';
+      noticeEl.innerHTML = `<strong>CDC data is ${Math.floor(age / 24)} days old.</strong> Run <code>python3 fetch_cdc.py</code> to refresh.`;
+    } else if (age > 24) {
+      noticeEl.className = 'notice warn';
+      noticeEl.innerHTML = `<strong>CDC data is ${fmtAge(age)}.</strong> Consider re-running <code>python3 fetch_cdc.py</code>.`;
+    } else {
+      noticeEl.innerHTML = `CDC data generated <strong>${fmtAge(age)}</strong> — ${fmtDateTime(cdc.generated)}.`;
+    }
+
+    // Generated card
+    document.getElementById('cdc-generated').textContent = fmtDateTime(cdc.generated);
+    document.getElementById('cdc-generated-sub').textContent = fmtAge(age);
+
+    // Current signal (last block = today)
+    const todayBlock = blocks[blocks.length - 1];
+    const sigEl = document.getElementById('cdc-signal');
+    sigEl.innerHTML = `<span class="dot ${todayBlock.bull ? 'bull' : 'bear'}"></span>${todayBlock.bull ? 'Bullish' : 'Bearish'}`;
+    sigEl.className = `value ${todayBlock.bull ? 'bull' : 'bear'}`;
+
+    // EMA diff today
+    document.getElementById('cdc-diff').textContent =
+      '$' + todayBlock.diff.toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+    // Streak
+    const lastSignal = todayBlock.bull;
+    let streak = 0;
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      if (blocks[i].bull === lastSignal) streak++;
+      else break;
+    }
+    const streakEl = document.getElementById('cdc-streak');
+    streakEl.textContent = streak + (streak === 1 ? ' day' : ' days');
+    streakEl.className = `value ${lastSignal ? 'bull' : 'bear'}`;
+    document.getElementById('cdc-streak-sub').textContent =
+      `consecutive ${lastSignal ? 'bullish' : 'bearish'}`;
+
+    // CDC chart (80px per side = 160px total)
+    const MAX_H = 80, MIN_H = 4;
+    const diffs = blocks.map(b => b.diff);
+    const minD  = Math.min(...diffs);
+    const maxD  = Math.max(...diffs);
+    const range = maxD - minD || 1;
+    document.getElementById('cdc-chart').innerHTML = blocks.map(b => {
+      const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
+      const mt = b.bull ? (MAX_H - h) : MAX_H;
+      return `<div class="db-slot"><div class="db-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
+    }).join('');
+
+    // Date range labels
+    const startTs = Date.now() - (blocks.length - 1) * 86_400_000;
+    document.getElementById('cdc-label-start').textContent = fmtDate(startTs);
+
+    // Signal breakdown
+    const bullBlocks = blocks.filter(b => b.bull);
+    const bearBlocks = blocks.filter(b => !b.bull);
+    document.getElementById('bull-count').textContent = bullBlocks.length;
+    document.getElementById('bull-pct').textContent   = Math.round(bullBlocks.length / blocks.length * 100) + '% of 30 days';
+    document.getElementById('bear-count').textContent = bearBlocks.length;
+    document.getElementById('bear-pct').textContent   = Math.round(bearBlocks.length / blocks.length * 100) + '% of 30 days';
+    document.getElementById('bull-avg-diff').textContent =
+      bullBlocks.length ? '$' + Math.round(avg(bullBlocks.map(b => b.diff))).toLocaleString() : '—';
+    document.getElementById('bear-avg-diff').textContent =
+      bearBlocks.length ? '$' + Math.round(avg(bearBlocks.map(b => b.diff))).toLocaleString() : '—';
+
+    // Block detail table (newest first)
+    const now = new Date();
+    document.getElementById('block-table').innerHTML = [...blocks].reverse().map((b, i) => {
+      const dayTs   = now.getTime() - i * 86_400_000;
+      const dayLabel = i === 0
+        ? `Today <span style="color:var(--muted);font-size:11px">(incomplete)</span>`
+        : fmtDate(dayTs);
+      return `<tr>
+        <td class="muted">${blocks.length - i}</td>
+        <td>${dayLabel}</td>
+        <td><span class="dot ${b.bull ? 'bull' : 'bear'}"></span><span class="${b.bull ? 'bull' : 'bear'}">${b.bull ? 'Bullish' : 'Bearish'}</span></td>
+        <td>$${b.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
+        <td style="color:var(--muted);font-size:12px">${i === 0 ? 'today' : ''}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Price history (localStorage) ─────────────────────
+  (function renderHistory() {
+    try {
+      const raw = localStorage.getItem('btcticker_history');
+      if (!raw) throw new Error('empty');
+      const hist = JSON.parse(raw);
+      if (!hist.length) throw new Error('empty');
+
+      document.getElementById('hist-count').textContent = hist.length.toLocaleString();
+
+      const latest = hist[hist.length - 1];
+      document.getElementById('hist-latest').textContent = fmtUSD(latest.price);
+      document.getElementById('hist-latest-sub').textContent = fmtDateTime(latest.ts);
+
+      const prices   = hist.map(e => e.price);
+      const high     = Math.max(...prices);
+      const low      = Math.min(...prices);
+      const highEntry = hist.find(e => e.price === high);
+      const lowEntry  = hist.find(e => e.price === low);
+
+      document.getElementById('hist-high').textContent     = fmtUSD(high);
+      document.getElementById('hist-high-sub').textContent = fmtDateTime(highEntry.ts);
+      document.getElementById('hist-low').textContent      = fmtUSD(low);
+      document.getElementById('hist-low-sub').textContent  = fmtDateTime(lowEntry.ts);
+    } catch {
+      document.getElementById('hist-latest-sub').textContent = 'No history in localStorage — open the ticker first.';
+    }
+  })();
+</script>
+</body>
+</html>

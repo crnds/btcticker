@@ -182,6 +182,7 @@ function connect(key) {
       const { change } = await exchange.init();
       if (change !== null && !isNaN(change)) latestChange = change;
     }
+    initCDC();
   };
 
   ws.onerror = () => ws.close();
@@ -279,6 +280,83 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('fullscreenchange',       onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) initCDC(); });
+
+// ── CDC ACTION ZONE ───────────────────────────────────────
+const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
+const CDC_TTL_MS      = 60 * 60 * 1000;
+
+function calcEMA(closes, period) {
+  const k   = 2 / (period + 1);
+  const out = new Array(closes.length).fill(null);
+  let seed  = 0;
+  for (let i = 0; i < period; i++) seed += closes[i];
+  out[period - 1] = seed / period;
+  for (let i = period; i < closes.length; i++) {
+    out[i] = closes[i] * k + out[i - 1] * (1 - k);
+  }
+  return out;
+}
+
+async function fetchCDCBlocks() {
+  // Tier 1: localStorage (fresh within 1 hour)
+  try {
+    const cached = JSON.parse(localStorage.getItem(CDC_STORAGE_KEY));
+    if (cached && Date.now() - cached.ts < CDC_TTL_MS && cached.blocks.length === 30 && cached.blocks[0]?.diff != null) return cached.blocks;
+  } catch {}
+
+  // Tier 2: local data file (data/cdc.js sets window.LOCAL_CDC)
+  if (window.LOCAL_CDC?.blocks?.length === 30 && window.LOCAL_CDC.blocks[0]?.diff != null) {
+    localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks: window.LOCAL_CDC.blocks }));
+    return window.LOCAL_CDC.blocks;
+  }
+
+  // Tier 3: Binance API
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(
+      'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=100',
+      { signal: ctrl.signal }
+    );
+    clearTimeout(tid);
+    const raw    = await r.json();
+    const closes = raw.map(k => parseFloat(k[4]));
+    const ema12  = calcEMA(closes, 12);
+    const ema26  = calcEMA(closes, 26);
+
+    const blocks = [];
+    for (let i = closes.length - 30; i < closes.length; i++) {
+      blocks.push({ bull: ema12[i] > ema26[i], today: i === closes.length - 1, diff: Math.abs(ema12[i] - ema26[i]) });
+    }
+    localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks }));
+    return blocks;
+  } catch {
+    clearTimeout(tid);
+    return null;
+  }
+}
+
+function renderCDC(blocks) {
+  const strip = document.getElementById('cdc-strip');
+  if (!blocks) return;
+  const diffs = blocks.map(b => b.diff);
+  const minD  = Math.min(...diffs);
+  const maxD  = Math.max(...diffs);
+  const range = maxD - minD || 1;
+  const MIN_H = 4, MAX_H = 52;
+  strip.innerHTML = blocks.map(b => {
+    const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
+    const mt = b.bull ? (MAX_H - h) : MAX_H;
+    return `<div class="cdc-slot"><div class="cdc-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
+  }).join('');
+}
+
+async function initCDC() {
+  renderCDC(await fetchCDCBlocks());
+}
+
+setInterval(initCDC, CDC_TTL_MS);
 
 // --- Init ---
 updateActive();

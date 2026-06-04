@@ -164,3 +164,38 @@ body {
   0%, 100% { opacity: 0; }
   50%       { opacity: 1; }
 }
+
+#cdc-strip {
+  position: fixed;
+  bottom: 44px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  width: 90vw;
+  user-select: none;
+}
+#cdc-strip::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52px;
+  height: 1px;
+  background: rgba(255,255,255,0.12);
+  pointer-events: none;
+}
+.cdc-slot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 104px;
+}
+.cdc-block {
+  width: 100%;
+  border-radius: 3px;
+}
+.cdc-block.bull  { background: #00e676; }
+.cdc-block.bear  { background: #ff1744; }
+.cdc-block.today { opacity: 0.4; }

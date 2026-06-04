@@ -1,0 +1,30 @@
+name: Update CDC data
+
+on:
+  schedule:
+    - cron: '5 0 * * *'  # 00:05 UTC daily, just after Binance daily candle closes
+  workflow_dispatch:       # allow manual runs from GitHub UI
+
+permissions:
+  contents: write
+
+jobs:
+  update-cdc:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Fetch CDC data
+        run: python3 fetch_cdc.py
+
+      - name: Commit updated CDC data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/cdc.js
+          git diff --cached --quiet || git commit -m "chore: update CDC data $(date -u +%Y-%m-%d)"
+          git push
