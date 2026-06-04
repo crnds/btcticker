@@ -312,19 +312,21 @@ async function fetchCDCBlocks() {
     return window.LOCAL_CDC.blocks;
   }
 
-  // Tier 3: Binance API
+  // Tier 3: Kraken REST API (interval=1440 = 1 day)
   const ctrl = new AbortController();
   const tid  = setTimeout(() => ctrl.abort(), 8000);
   try {
     const r = await fetch(
-      'https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&limit=100',
+      'https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440',
       { signal: ctrl.signal }
     );
     clearTimeout(tid);
-    const raw    = await r.json();
-    const closes = raw.map(k => parseFloat(k[4]));
-    const ema12  = calcEMA(closes, 12);
-    const ema26  = calcEMA(closes, 26);
+    const json    = await r.json();
+    const result  = json.result;
+    const pairKey = Object.keys(result).find(k => k !== 'last');
+    const closes  = result[pairKey].slice(-100).map(c => parseFloat(c[4]));
+    const ema12   = calcEMA(closes, 12);
+    const ema26   = calcEMA(closes, 26);
 
     const blocks = [];
     for (let i = closes.length - 30; i < closes.length; i++) {
