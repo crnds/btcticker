@@ -133,6 +133,15 @@ body {
 }
 #menu-list li:hover { color: #ccc; }
 #menu-list li.active { color: #e0e0e0; }
+#dashboard-link {
+  border-top: 1px solid #1e1e1e;
+  margin-top: 4px;
+  padding-top: 10px;
+  color: #F4620E;
+  letter-spacing: 0.04em;
+  font-size: 11px;
+}
+#dashboard-link:hover { color: #ff7a35; }
 #menu-list li.active::after {
   content: ' ●';
   color: #00e676;
