@@ -364,3 +364,4 @@ setInterval(initCDC, CDC_TTL_MS);
 // --- Init ---
 updateActive();
 connect(currentExchange);
+initCDC();
