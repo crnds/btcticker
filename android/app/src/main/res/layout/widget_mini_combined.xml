@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="8dp">
+
+    <!-- Top half: BTC price -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:id="@+id/widget_mini_price"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_toStartOf="@+id/widget_mini_refresh_btn"
+            android:text="—"
+            android:textColor="#e0e0e0"
+            android:fontFamily="sans-serif-condensed"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="10sp"
+            android:autoSizeMaxTextSize="20sp"
+            android:maxLines="1"
+            android:gravity="start|center_vertical" />
+
+        <ImageButton
+            android:id="@+id/widget_mini_refresh_btn"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:background="@null"
+            android:src="@drawable/ic_widget_refresh"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:contentDescription="@string/widget_refresh" />
+
+        <TextView
+            android:id="@+id/widget_mini_change"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:textSize="8sp"
+            android:fontFamily="monospace" />
+
+    </RelativeLayout>
+
+    <!-- Horizontal divider -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1f1f1f" />
+
+    <!-- Bottom half: CDC strip -->
+    <ImageView
+        android:id="@+id/widget_mini_strip"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scaleType="fitXY"
+        android:contentDescription="CDC strip" />
+
+</LinearLayout>

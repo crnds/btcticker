@@ -104,6 +104,20 @@
                 android:resource="@xml/widget_combined_info" />
         </receiver>
 
+        <!-- Mini combined price + CDC widget 1×1 -->
+        <receiver
+            android:name=".MiniCombinedWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.btcticker.app.MINI_COMBINED_WIDGET_REFRESH" />
+                <action android:name="com.btcticker.app.MINI_COMBINED_WIDGET_MANUAL_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_mini_combined_info" />
+        </receiver>
+
         <!-- Restores alarms after device reboot -->
         <receiver
             android:name=".BootReceiver"

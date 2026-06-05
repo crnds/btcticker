@@ -24,7 +24,8 @@ public class BootReceiver extends BroadcastReceiver {
         restart(ctx, mgr, CdcWidgetProvider.class,        new CdcWidgetProvider());
         restart(ctx, mgr, PriceWidgetSmallProvider.class, new PriceWidgetSmallProvider());
         restart(ctx, mgr, CdcWidgetSmallProvider.class,   new CdcWidgetSmallProvider());
-        restart(ctx, mgr, CombinedWidgetProvider.class,   new CombinedWidgetProvider());
+        restart(ctx, mgr, CombinedWidgetProvider.class,     new CombinedWidgetProvider());
+        restart(ctx, mgr, MiniCombinedWidgetProvider.class, new MiniCombinedWidgetProvider());
     }
 
     private static void restart(Context ctx, AppWidgetManager mgr,

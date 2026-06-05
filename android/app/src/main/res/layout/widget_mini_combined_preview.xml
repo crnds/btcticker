@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview shown in the widget picker (previewLayout, API 31+). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="8dp">
+
+    <!-- Top half: price preview -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_toStartOf="@+id/preview_mini_refresh"
+            android:text="104,888"
+            android:textColor="#e0e0e0"
+            android:fontFamily="sans-serif-condensed"
+            android:textStyle="bold"
+            android:textSize="18sp"
+            android:maxLines="1"
+            android:gravity="start|center_vertical" />
+
+        <ImageButton
+            android:id="@+id/preview_mini_refresh"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:background="@null"
+            android:src="@drawable/ic_widget_refresh"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:contentDescription="@string/widget_refresh" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:text="+6%"
+            android:textColor="#00e676"
+            android:textSize="8sp"
+            android:fontFamily="monospace" />
+
+    </RelativeLayout>
+
+    <!-- Horizontal divider -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#1f1f1f" />
+
+    <!-- Bottom half: CDC strip preview -->
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:src="@drawable/ic_cdc_preview_bars"
+        android:scaleType="fitXY"
+        android:contentDescription="CDC strip" />
+
+</LinearLayout>
