@@ -17,6 +17,7 @@
         android:textStyle="bold"
         android:maxLines="1"
         android:gravity="start|center_vertical"
+        android:textSize="28sp"
         android:autoSizeTextType="uniform"
         android:autoSizeMinTextSize="14sp"
         android:autoSizeMaxTextSize="80sp"
@@ -25,8 +26,8 @@
     <!-- Refresh button: top-right, overlaid on the price -->
     <ImageButton
         android:id="@+id/widget_refresh_btn"
-        android:layout_width="24dp"
-        android:layout_height="24dp"
+        android:layout_width="12dp"
+        android:layout_height="12dp"
         android:background="@null"
         android:src="@drawable/ic_widget_refresh"
         android:layout_alignParentTop="true"

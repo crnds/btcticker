@@ -1,10 +1,12 @@
 package com.btcticker.app;
 
 import android.appwidget.AppWidgetManager;
+import android.appwidget.AppWidgetProvider;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 
 /**
  * Reschedules widget alarms after device reboot — AlarmManager alarms are
@@ -18,34 +20,21 @@ public class BootReceiver extends BroadcastReceiver {
 
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
 
-        int[] priceIds = mgr.getAppWidgetIds(
-            new ComponentName(ctx, PriceWidgetProvider.class));
-        if (priceIds.length > 0) {
-            new PriceWidgetProvider().onUpdate(ctx, mgr, priceIds);
-        }
+        restart(ctx, mgr, PriceWidgetProvider.class,      new PriceWidgetProvider());
+        restart(ctx, mgr, CdcWidgetProvider.class,        new CdcWidgetProvider());
+        restart(ctx, mgr, PriceWidgetSmallProvider.class, new PriceWidgetSmallProvider());
+        restart(ctx, mgr, CdcWidgetSmallProvider.class,   new CdcWidgetSmallProvider());
+        restart(ctx, mgr, CombinedWidgetProvider.class,   new CombinedWidgetProvider());
+    }
 
-        int[] cdcIds = mgr.getAppWidgetIds(
-            new ComponentName(ctx, CdcWidgetProvider.class));
-        if (cdcIds.length > 0) {
-            new CdcWidgetProvider().onUpdate(ctx, mgr, cdcIds);
-        }
-
-        int[] priceSmallIds = mgr.getAppWidgetIds(
-            new ComponentName(ctx, PriceWidgetSmallProvider.class));
-        if (priceSmallIds.length > 0) {
-            new PriceWidgetSmallProvider().onUpdate(ctx, mgr, priceSmallIds);
-        }
-
-        int[] cdcSmallIds = mgr.getAppWidgetIds(
-            new ComponentName(ctx, CdcWidgetSmallProvider.class));
-        if (cdcSmallIds.length > 0) {
-            new CdcWidgetSmallProvider().onUpdate(ctx, mgr, cdcSmallIds);
-        }
-
-        int[] combinedIds = mgr.getAppWidgetIds(
-            new ComponentName(ctx, CombinedWidgetProvider.class));
-        if (combinedIds.length > 0) {
-            new CombinedWidgetProvider().onUpdate(ctx, mgr, combinedIds);
+    private static void restart(Context ctx, AppWidgetManager mgr,
+                                 Class<? extends AppWidgetProvider> cls,
+                                 AppWidgetProvider provider) {
+        try {
+            int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, cls));
+            if (ids.length > 0) provider.onUpdate(ctx, mgr, ids);
+        } catch (Exception e) {
+            Log.e("BootReceiver", "Failed to restart " + cls.getSimpleName(), e);
         }
     }
 }

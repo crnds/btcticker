@@ -22,6 +22,7 @@
             android:textStyle="bold"
             android:maxLines="1"
             android:gravity="start|center_vertical"
+            android:textSize="22sp"
             android:autoSizeTextType="uniform"
             android:autoSizeMinTextSize="12sp"
             android:autoSizeMaxTextSize="80sp"
@@ -39,8 +40,8 @@
 
     </RelativeLayout>
 
-    <!-- Vertical divider -->
-    <View
+    <!-- Vertical divider — TextView instead of View for RemoteViews compatibility -->
+    <TextView
         android:layout_width="1dp"
         android:layout_height="match_parent"
         android:layout_marginStart="6dp"
@@ -67,8 +68,8 @@
         <!-- Refresh button — top right -->
         <ImageButton
             android:id="@+id/widget_combined_refresh_btn"
-            android:layout_width="24dp"
-            android:layout_height="24dp"
+            android:layout_width="12dp"
+            android:layout_height="12dp"
             android:background="@null"
             android:src="@drawable/ic_widget_refresh"
             android:layout_alignParentTop="true"
