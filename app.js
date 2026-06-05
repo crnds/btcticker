@@ -93,6 +93,28 @@ const menuBtn   = document.getElementById('menu-btn');
 const menuList  = document.getElementById('menu-list');
 const loadingEl = document.getElementById('loading');
 
+// ── FIT WIDTH ─────────────────────────────────────────────
+function fitWidth(el, weight = 700) {
+  const target = el.parentElement.clientWidth;
+  if (!target) return;
+  let lo = 25, hi = 151; // Roboto Flex wdth axis range
+  for (let i = 0; i < 16; i++) {
+    const mid = (lo + hi) / 2;
+    el.style.fontVariationSettings = `"wght" ${weight}, "wdth" ${mid}`;
+    if (el.getBoundingClientRect().width > target) hi = mid;
+    else lo = mid;
+  }
+  el.style.fontVariationSettings = `"wght" ${weight}, "wdth" ${lo}`;
+}
+
+document.fonts.ready.then(() => { if (el.textContent) fitWidth(el); });
+
+let _roTimer;
+new ResizeObserver(() => {
+  clearTimeout(_roTimer);
+  _roTimer = setTimeout(() => { if (el.textContent) fitWidth(el); }, 50);
+}).observe(document.body);
+
 // --- localStorage history ---
 const STORAGE_KEY = 'btcticker_history';
 const SNAPSHOT_MS = 60_000;
@@ -151,7 +173,7 @@ setInterval(() => {
   last = latest;
   if (!pending) {
     pending = true;
-    requestAnimationFrame(() => { el.innerHTML = fmt(last, latestChange); pending = false; });
+    requestAnimationFrame(() => { el.innerHTML = fmt(last, latestChange); fitWidth(el); pending = false; });
   }
 }, 500);
 
@@ -160,6 +182,7 @@ if (history.length) {
   const e = history[history.length - 1];
   latest = e.price; latestChange = e.change;
   el.innerHTML = fmt(latest, latestChange);
+  document.fonts.ready.then(() => fitWidth(el));
 } else {
   loadingEl.classList.add('active');
 }
