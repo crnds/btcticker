@@ -19,7 +19,7 @@
 
 ## Android
 
-[**Download APK (v1.0.0)**](https://github.com/crnds/btcticker/releases/tag/v1.0.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.1.0)**](https://github.com/crnds/btcticker/releases/tag/v1.1.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
@@ -53,6 +53,40 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 
 ---
 
+## Android Widgets
+
+Two home screen widgets are included (both 2×1 cells).
+
+### BTC Price widget
+
+```
+┌──────────────────────────────┐
+│ 104,888                   ↻  │
+│                   3m ago +6% │
+└──────────────────────────────┘
+```
+
+- Live BTC/USDT price via Binance REST API
+- Auto-refreshes every 10 minutes
+- Tap ↻ to refresh immediately
+- Price autoscales to fill the full widget height
+
+### CDC Strip widget
+
+```
+┌──────────────────────────────┐
+│ CDC · 3m ago              ↻  │
+│ ▄▄▂▂██▃▃▅▅██▄▄▂▂▇▇▄▄▂▂██   │
+└──────────────────────────────┘
+```
+
+- 30-day EMA(12)/EMA(26) crossover bars — green = bull, red = bear
+- Auto-refreshes once daily via Kraken OHLC API
+- Tap ↻ to refresh immediately
+- Falls back to cached data when offline; alarms survive device reboots
+
+---
+
 ## File Structure
 
 ```
@@ -60,13 +94,17 @@ btcticker/
 ├── index.html              — ticker: price display + exchange menu + CDC strip
 ├── style.css               — layout, Bebas Neue font, dark theme
 ├── app.js                  — WebSocket client, localStorage history, CDC logic
-├── db.html                 — 24hr dashboard: price history chart + stats
+├── db.html                 — dashboard: CDC stats + price history
 ├── fetch_cdc.py            — fetches daily OHLC from Kraken, writes data/cdc.js
 ├── data/
 │   └── cdc.js              — bundled CDC data (fallback when API is unavailable)
 ├── assets/
 │   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
 ├── android/                — Capacitor Android project (build APK in Android Studio)
+│   └── app/src/main/java/com/btcticker/app/
+│       ├── PriceWidgetProvider.java  — BTC price widget
+│       ├── CdcWidgetProvider.java    — CDC strip widget
+│       └── BootReceiver.java         — reschedules alarms after reboot
 ├── capacitor.config.json   — Capacitor config (webDir: www)
 └── package.json            — Capacitor dependencies only
 ```
