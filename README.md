@@ -11,6 +11,12 @@
 
 ---
 
+## Live
+
+[**crnds.github.io/btcticker**](https://crnds.github.io/btcticker) — open in any browser, no install required.
+
+---
+
 ## Android
 
 [**Download APK (v1.0.0)**](https://github.com/crnds/btcticker/releases/tag/v1.0.0) — sideload on any Android device (API 24+).
