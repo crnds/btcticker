@@ -24,6 +24,7 @@ body {
   user-select: none;
   transform: scaleY(1.25);
   transform-origin: center center;
+  margin-bottom: 15vh;
 }
 .dec-wrap {
   display: inline-flex;
