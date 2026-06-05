@@ -8,8 +8,8 @@
     <!-- Refresh button — top right -->
     <ImageButton
         android:id="@+id/widget_refresh_btn"
-        android:layout_width="10dp"
-        android:layout_height="10dp"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
         android:background="@null"
         android:src="@drawable/ic_widget_refresh"
         android:layout_alignParentTop="true"
