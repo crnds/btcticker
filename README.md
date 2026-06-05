@@ -9,6 +9,10 @@
 
 *Real-time BTC/USDT price ticker — static, no server, no dependencies.*
 
+## Android
+
+[Download APK (v1.0.0)](https://github.com/crnds/btcticker/releases/tag/v1.0.0) — sideload on any Android device.
+
 ---
 
 ## How It Works
