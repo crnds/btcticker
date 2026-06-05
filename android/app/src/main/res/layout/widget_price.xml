@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:padding="10dp">
+
+    <!-- Price: fills the full content area so autoSizeTextType scales
+         against both the widget width AND height simultaneously. -->
+    <TextView
+        android:id="@+id/widget_price"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="—"
+        android:textColor="#e0e0e0"
+        android:fontFamily="sans-serif-condensed"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:gravity="start|center_vertical"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="80sp"
+        android:autoSizeStepGranularity="1sp" />
+
+    <!-- Refresh button: top-right, overlaid on the price -->
+    <ImageButton
+        android:id="@+id/widget_refresh_btn"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:background="@null"
+        android:src="@drawable/ic_widget_refresh"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:contentDescription="@string/widget_refresh" />
+
+    <!-- Change %: bottom-right, overlaid -->
+    <TextView
+        android:id="@+id/widget_change"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:text=""
+        android:textSize="11sp"
+        android:fontFamily="monospace" />
+
+    <!-- Timestamp: bottom-right, left of the change label -->
+    <TextView
+        android:id="@+id/widget_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toStartOf="@+id/widget_change"
+        android:layout_marginEnd="5dp"
+        android:text=""
+        android:textColor="#444444"
+        android:textSize="9sp"
+        android:fontFamily="monospace" />
+
+</RelativeLayout>
