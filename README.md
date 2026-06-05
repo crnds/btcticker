@@ -19,7 +19,7 @@
 
 ## Android
 
-[**Download APK (v1.1.0)**](https://github.com/crnds/btcticker/releases/tag/v1.1.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.3.0)**](https://github.com/crnds/btcticker/releases/tag/v1.3.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
@@ -55,9 +55,17 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 
 ## Android Widgets
 
-Two home screen widgets are included (both 2×1 cells).
+Five home screen widgets across three sizes. All show a live preview in the widget picker, have a manual ↻ refresh button, and reschedule their alarms after device reboot.
 
-### BTC Price widget
+| Widget | Size | Refresh |
+|---|---|---|
+| BTC Ticker | 2×1 | 10 min |
+| CDC Strip | 2×1 | Daily |
+| BTC Price | 1×1 | 10 min |
+| CDC | 1×1 | Daily |
+| BTC + CDC | 2×1 | 10 min (CDC lazy) |
+
+### BTC Ticker (2×1)
 
 ```
 ┌──────────────────────────────┐
@@ -66,12 +74,9 @@ Two home screen widgets are included (both 2×1 cells).
 └──────────────────────────────┘
 ```
 
-- Live BTC/USDT price via Binance REST API
-- Auto-refreshes every 10 minutes
-- Tap ↻ to refresh immediately
-- Price autoscales to fill the full widget height
+Live BTC/USDT price autoscaled to fill the full widget height. % change and last-fetch time overlaid at bottom-right.
 
-### CDC Strip widget
+### CDC Strip (2×1)
 
 ```
 ┌──────────────────────────────┐
@@ -80,10 +85,43 @@ Two home screen widgets are included (both 2×1 cells).
 └──────────────────────────────┘
 ```
 
-- 30-day EMA(12)/EMA(26) crossover bars — green = bull, red = bear
-- Auto-refreshes once daily via Kraken OHLC API
-- Tap ↻ to refresh immediately
-- Falls back to cached data when offline; alarms survive device reboots
+30-day EMA(12)/EMA(26) crossover strip — green bars = bull, red bars = bear, today's bar at 40% opacity. Fetches from Kraken OHLC once daily.
+
+### BTC Price (1×1)
+
+```
+┌──────────────┐
+│          ↻   │
+│  104,888     │
+│         +6%  │
+└──────────────┘
+```
+
+Compact single-cell price widget. Same Binance feed, 10-minute refresh.
+
+### CDC (1×1)
+
+```
+┌──────────────┐
+│ CDC      ↻   │
+│ ▄▂█▃▅█▄▂▇▄  │
+│ ▅█▄▂▄█▅▂██  │
+└──────────────┘
+```
+
+CDC strip squeezed into a single cell — bars rendered with no gaps to fit all 30 days.
+
+### BTC + CDC (2×1)
+
+```
+┌─────────────────┬───────────────┐
+│                 │ CDC · 3h ago ↻│
+│    104,888      │ ▄▂█▃▅█▄▂▇▄   │
+│           +6%   │ ▅█▄▂▄█▅▂██   │
+└─────────────────┴───────────────┘
+```
+
+Combined widget — price on the left half, CDC strip on the right half, equal 50/50 split. Price refreshes every 10 minutes; CDC re-fetches only when the cache is older than 12 hours.
 
 ---
 
@@ -102,9 +140,12 @@ btcticker/
 │   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
 ├── android/                — Capacitor Android project (build APK in Android Studio)
 │   └── app/src/main/java/com/btcticker/app/
-│       ├── PriceWidgetProvider.java  — BTC price widget
-│       ├── CdcWidgetProvider.java    — CDC strip widget
-│       └── BootReceiver.java         — reschedules alarms after reboot
+│       ├── PriceWidgetProvider.java       — BTC Ticker widget (2×1)
+│       ├── CdcWidgetProvider.java         — CDC Strip widget (2×1)
+│       ├── PriceWidgetSmallProvider.java  — BTC Price widget (1×1)
+│       ├── CdcWidgetSmallProvider.java    — CDC widget (1×1)
+│       ├── CombinedWidgetProvider.java    — BTC + CDC widget (2×1)
+│       └── BootReceiver.java              — reschedules alarms after reboot
 ├── capacitor.config.json   — Capacitor config (webDir: www)
 └── package.json            — Capacitor dependencies only
 ```
