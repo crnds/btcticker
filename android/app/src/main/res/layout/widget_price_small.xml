@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:padding="8dp">
+
+    <!-- Refresh button — top right -->
+    <ImageButton
+        android:id="@+id/widget_refresh_btn"
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="@null"
+        android:src="@drawable/ic_widget_refresh"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:contentDescription="@string/widget_refresh" />
+
+    <!-- Price fills full area; autoSize scales down to fit -->
+    <TextView
+        android:id="@+id/widget_price"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:textColor="#e0e0e0"
+        android:fontFamily="sans-serif-condensed"
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:gravity="start|center_vertical"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="12sp"
+        android:autoSizeMaxTextSize="80sp"
+        android:autoSizeStepGranularity="1sp" />
+
+    <!-- Change % — bottom right overlay -->
+    <TextView
+        android:id="@+id/widget_change"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:textSize="10sp"
+        android:fontFamily="monospace" />
+
+</RelativeLayout>

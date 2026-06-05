@@ -29,5 +29,23 @@ public class BootReceiver extends BroadcastReceiver {
         if (cdcIds.length > 0) {
             new CdcWidgetProvider().onUpdate(ctx, mgr, cdcIds);
         }
+
+        int[] priceSmallIds = mgr.getAppWidgetIds(
+            new ComponentName(ctx, PriceWidgetSmallProvider.class));
+        if (priceSmallIds.length > 0) {
+            new PriceWidgetSmallProvider().onUpdate(ctx, mgr, priceSmallIds);
+        }
+
+        int[] cdcSmallIds = mgr.getAppWidgetIds(
+            new ComponentName(ctx, CdcWidgetSmallProvider.class));
+        if (cdcSmallIds.length > 0) {
+            new CdcWidgetSmallProvider().onUpdate(ctx, mgr, cdcSmallIds);
+        }
+
+        int[] combinedIds = mgr.getAppWidgetIds(
+            new ComponentName(ctx, CombinedWidgetProvider.class));
+        if (combinedIds.length > 0) {
+            new CombinedWidgetProvider().onUpdate(ctx, mgr, combinedIds);
+        }
     }
 }

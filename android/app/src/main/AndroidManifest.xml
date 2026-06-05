@@ -62,6 +62,48 @@
                 android:resource="@xml/widget_cdc_info" />
         </receiver>
 
+        <!-- Price widget 1×1 -->
+        <receiver
+            android:name=".PriceWidgetSmallProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.btcticker.app.PRICE_WIDGET_SMALL_REFRESH" />
+                <action android:name="com.btcticker.app.PRICE_WIDGET_SMALL_MANUAL_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_price_small_info" />
+        </receiver>
+
+        <!-- CDC strip widget 1×1 -->
+        <receiver
+            android:name=".CdcWidgetSmallProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.btcticker.app.CDC_WIDGET_SMALL_REFRESH" />
+                <action android:name="com.btcticker.app.CDC_WIDGET_SMALL_MANUAL_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_cdc_small_info" />
+        </receiver>
+
+        <!-- Combined price + CDC widget 2×1 -->
+        <receiver
+            android:name=".CombinedWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.btcticker.app.COMBINED_WIDGET_REFRESH" />
+                <action android:name="com.btcticker.app.COMBINED_WIDGET_MANUAL_REFRESH" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_combined_info" />
+        </receiver>
+
         <!-- Restores alarms after device reboot -->
         <receiver
             android:name=".BootReceiver"

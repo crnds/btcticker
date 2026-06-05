@@ -8,4 +8,7 @@
     <string name="widget_cdc_title">CDC Strip</string>
     <string name="widget_cdc_label">CDC</string>
     <string name="widget_refresh">Refresh</string>
+    <string name="widget_price_small_title">BTC Price</string>
+    <string name="widget_cdc_small_title">CDC</string>
+    <string name="widget_combined_title">BTC + CDC</string>
 </resources>

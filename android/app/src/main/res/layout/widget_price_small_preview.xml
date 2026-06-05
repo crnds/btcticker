@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Static preview shown in the widget picker (previewLayout, API 31+). -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:padding="8dp">
+
+    <ImageButton
+        android:layout_width="20dp"
+        android:layout_height="20dp"
+        android:background="@null"
+        android:src="@drawable/ic_widget_refresh"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:contentDescription="@string/widget_refresh" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:text="104,888"
+        android:textColor="#e0e0e0"
+        android:fontFamily="sans-serif-condensed"
+        android:textStyle="bold"
+        android:textSize="22sp"
+        android:maxLines="1"
+        android:gravity="start|center_vertical" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:text="+6%"
+        android:textColor="#00e676"
+        android:textSize="10sp"
+        android:fontFamily="monospace" />
+
+</RelativeLayout>

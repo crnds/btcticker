@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg"
+    android:orientation="horizontal"
+    android:padding="10dp">
+
+    <!-- Left pane: price + change (50%) -->
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <!-- Price fills full height; autoSize finds the largest fitting size -->
+        <TextView
+            android:id="@+id/widget_combined_price"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:textColor="#e0e0e0"
+            android:fontFamily="sans-serif-condensed"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:gravity="start|center_vertical"
+            android:autoSizeTextType="uniform"
+            android:autoSizeMinTextSize="12sp"
+            android:autoSizeMaxTextSize="80sp"
+            android:autoSizeStepGranularity="1sp" />
+
+        <!-- Change % overlaid at bottom-right of left pane -->
+        <TextView
+            android:id="@+id/widget_combined_change"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentEnd="true"
+            android:textSize="11sp"
+            android:fontFamily="monospace" />
+
+    </RelativeLayout>
+
+    <!-- Vertical divider -->
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:background="#1f1f1f" />
+
+    <!-- Right pane: CDC label, refresh, strip (50%) -->
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <!-- CDC age label — top left -->
+        <TextView
+            android:id="@+id/widget_combined_cdc_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentStart="true"
+            android:textColor="#555555"
+            android:textSize="9sp"
+            android:fontFamily="monospace" />
+
+        <!-- Refresh button — top right -->
+        <ImageButton
+            android:id="@+id/widget_combined_refresh_btn"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="@null"
+            android:src="@drawable/ic_widget_refresh"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:contentDescription="@string/widget_refresh" />
+
+        <!-- CDC strip — fills remaining height below label -->
+        <ImageView
+            android:id="@+id/widget_combined_strip"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/widget_combined_cdc_label"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentStart="true"
+            android:layout_alignParentEnd="true"
+            android:layout_marginTop="3dp"
+            android:scaleType="fitXY"
+            android:contentDescription="CDC strip" />
+
+    </RelativeLayout>
+
+</LinearLayout>
