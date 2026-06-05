@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    CDC strip preview — 30 bars computed from data/cdc.js.
+    Viewport 300×40, midY=20, slotW=9, gap=1.
+    Bull bars (green) anchor at midY going up; bear bars (red) going down.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="300dp"
+    android:height="40dp"
+    android:viewportWidth="300"
+    android:viewportHeight="40">
+
+    <!-- Bull bars (#00e676), blocks 0–15 -->
+    <path
+        android:fillColor="#00e676"
+        android:pathData="
+            M0,6.6 L9,6.6 L9,20 L0,20 Z
+            M10,6.8 L19,6.8 L19,20 L10,20 Z
+            M20,7.1 L29,7.1 L29,20 L20,20 Z
+            M30,7.1 L39,7.1 L39,20 L30,20 Z
+            M40,6.6 L49,6.6 L49,20 L40,20 Z
+            M50,6.5 L59,6.5 L59,20 L50,20 Z
+            M60,7.2 L69,7.2 L69,20 L60,20 Z
+            M70,8.5 L79,8.5 L79,20 L70,20 Z
+            M80,8.7 L89,8.7 L89,20 L80,20 Z
+            M90,10 L99,10 L99,20 L90,20 Z
+            M100,11.6 L109,11.6 L109,20 L100,20 Z
+            M110,13.2 L119,13.2 L119,20 L110,20 Z
+            M120,14.8 L129,14.8 L129,20 L120,20 Z
+            M130,16.2 L139,16.2 L139,20 L130,20 Z
+            M140,16.9 L149,16.9 L149,20 L140,20 Z
+            M150,17.5 L159,17.5 L159,20 L150,20 Z" />
+
+    <!-- Bear bars (#ff1744), blocks 16–29 -->
+    <path
+        android:fillColor="#ff1744"
+        android:pathData="
+            M160,20 L169,20 L169,21.5 L160,21.5 Z
+            M170,20 L179,20 L179,22.1 L170,22.1 Z
+            M180,20 L189,20 L189,22.4 L180,22.4 Z
+            M190,20 L199,20 L199,22.5 L190,22.5 Z
+            M200,20 L209,20 L209,23.2 L200,23.2 Z
+            M210,20 L219,20 L219,24.5 L210,24.5 Z
+            M220,20 L229,20 L229,25.9 L220,25.9 Z
+            M230,20 L239,20 L239,27 L230,27 Z
+            M240,20 L249,20 L249,27.6 L240,27.6 Z
+            M250,20 L259,20 L259,28.1 L250,28.1 Z
+            M260,20 L269,20 L269,29.5 L260,29.5 Z
+            M270,20 L279,20 L279,32.8 L270,32.8 Z
+            M280,20 L289,20 L289,36.6 L280,36.6 Z
+            M290,20 L299,20 L299,40 L290,40 Z" />
+
+</vector>
