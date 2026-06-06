@@ -9,7 +9,7 @@
 
 *Real-time BTC price ticker — static web app + Android APK, no server, no dependencies.*
 
-![BTC Ticker running on a wall-mounted display](docs/hero.jpg)
+<img src="docs/hero.jpg" width="480" alt="BTC Ticker running on a wall-mounted display">
 
 *Works as a dedicated Bitcoin dashboard or always-on Bitcoin clock — mount any screen, open the browser, done.*
 
@@ -27,7 +27,7 @@
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
-![Android home screen showing four BTC widgets](docs/widgets.jpg)
+<img src="docs/widgets.jpg" width="480" alt="Android home screen showing four BTC widgets">
 
 *Four widgets on a single home screen: the wide BTC Ticker (top-left) shows the full price with last-fetch time and % change; the compact BTC Price (top-right) gives a square glanceable price; the BTC Mini (bottom-left) combines price and a mini CDC strip in one cell; and the CDC Strip (bottom-right) shows the full 30-day EMA crossover chart. All update independently and share a background cache.*
 
