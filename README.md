@@ -9,6 +9,10 @@
 
 *Real-time BTC price ticker — static web app + Android APK, no server, no dependencies.*
 
+![BTC Ticker running on a wall-mounted display](docs/hero.jpg)
+
+*Works as a dedicated Bitcoin dashboard or always-on Bitcoin clock — mount any screen, open the browser, done.*
+
 ---
 
 ## Live
@@ -19,9 +23,13 @@
 
 ## Android
 
-[**Download APK (v1.4.0)**](https://github.com/crnds/btcticker/releases/tag/v1.4.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.6.0)**](https://github.com/crnds/btcticker/releases/tag/v1.6.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
+
+![Android home screen showing four BTC widgets](docs/widgets.jpg)
+
+*Four widgets on a single home screen: the wide BTC Ticker (top-left) shows the full price with last-fetch time and % change; the compact BTC Price (top-right) gives a square glanceable price; the BTC Mini (bottom-left) combines price and a mini CDC strip in one cell; and the CDC Strip (bottom-right) shows the full 30-day EMA crossover chart. All update independently and share a background cache.*
 
 ---
 
@@ -78,7 +86,7 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 
 ## Android Widgets
 
-Five home screen widgets across three sizes. All show a live preview thumbnail in the widget picker, have a small grey refresh button, and automatically reschedule their alarms after device reboot.
+Six home screen widgets across three sizes. All show a live preview thumbnail in the widget picker, have an orange refresh button, and automatically reschedule their alarms after device reboot.
 
 | Widget | Size | Refresh | Data source |
 |---|---|---|---|
@@ -87,6 +95,7 @@ Five home screen widgets across three sizes. All show a live preview thumbnail i
 | BTC Price | 1×1 | 10 min | Binance REST |
 | CDC | 1×1 | Daily | Kraken OHLC |
 | BTC + CDC | 2×1 | 10 min (CDC lazy) | Binance + Kraken |
+| BTC Mini | 1×1 | 10 min (CDC lazy) | Binance + Kraken |
 
 ### BTC Ticker (2×1)
 
@@ -146,6 +155,19 @@ CDC strip squeezed into a single cell — 30 bars with no gaps to fit the full h
 
 Combined widget — price on the left half, CDC strip on the right half, 50/50 split. Price refreshes every 10 minutes; CDC re-fetches only when the cache is older than 12 hours.
 
+### BTC Mini (1×1)
+
+```
+┌──────────────┐
+│  104,888  ↻  │
+│         +6%  │
+├──────────────┤
+│ ▄▂█▃▅█▄▂▇▄  │
+└──────────────┘
+```
+
+Compact single-cell combined widget — price with % change in the top half, CDC strip in the bottom half, 50/50 vertical split. Price refreshes every 10 minutes; CDC re-fetches only when the cache is older than 12 hours.
+
 ---
 
 ## CDC Data
@@ -202,6 +224,7 @@ btcticker/
 │       ├── PriceWidgetSmallProvider.java  — BTC Price widget (1×1)
 │       ├── CdcWidgetSmallProvider.java    — CDC widget (1×1)
 │       ├── CombinedWidgetProvider.java    — BTC + CDC widget (2×1)
+│       ├── MiniCombinedWidgetProvider.java — BTC Mini widget (1×1)
 │       └── BootReceiver.java              — reschedules alarms after reboot
 ├── capacitor.config.json   — Capacitor config (webDir: www)
 └── package.json            — Capacitor dependencies only
@@ -248,10 +271,15 @@ firefox --kiosk index.html
 
 ## Changelog
 
+### v1.6.0
+- Added 1×1 BTC Mini widget — price in the top half, CDC strip in the bottom half, 50/50 vertical split
+
+### v1.5.0
+- Refresh button restored to original orange (#F4620E) and original sizes (24dp / 28dp / 20dp / 24dp) across all widgets
+
 ### v1.4.0
 - Audit fixes: added `textSize` fallback on price widgets for API 24–25 compatibility; added `—` placeholder on 1×1 price widget initial state
 - BootReceiver refactored — each of the 5 providers restarts independently with isolated error handling
-- Refresh button colour changed from orange to grey; size halved across all widgets
 - Combined widget (BTC + CDC) crash fix: replaced unsupported `<View>` divider with `<TextView>` for RemoteViews compatibility
 
 ### v1.3.0
