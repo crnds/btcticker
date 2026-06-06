@@ -7,7 +7,7 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_mini_combined"
     android:previewLayout="@layout/widget_mini_combined_preview"
-    android:previewImage="@drawable/ic_cdc_preview_bars"
+    android:previewImage="@mipmap/ic_launcher"
     android:label="@string/widget_mini_combined_title"
     android:widgetCategory="home_screen"
     android:resizeMode="none" />
