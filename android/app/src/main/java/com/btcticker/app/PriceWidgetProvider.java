@@ -191,8 +191,16 @@ public class PriceWidgetProvider extends AppWidgetProvider {
 
     static String timeAgo(long ts) {
         long secs = (System.currentTimeMillis() - ts) / 1000;
-        if (secs < 60)   return secs + "s ago";
-        if (secs < 3600) return (secs / 60) + "m ago";
-        return (secs / 3600) + "h ago";
+        String rel;
+        if (secs < 60)        rel = secs + "s ago";
+        else if (secs < 3600) rel = (secs / 60) + "m ago";
+        else                  rel = (secs / 3600) + "h ago";
+
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.setTimeInMillis(ts);
+        String hhmm = String.format("%02d:%02d",
+            cal.get(java.util.Calendar.HOUR_OF_DAY),
+            cal.get(java.util.Calendar.MINUTE));
+        return "at " + hhmm + " (" + rel + ")";
     }
 }

@@ -23,13 +23,13 @@
 
 ## Android
 
-[**Download APK (v1.6.0)**](https://github.com/crnds/btcticker/releases/tag/v1.6.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.7.0)**](https://github.com/crnds/btcticker/releases/tag/v1.7.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
 <img src="docs/widgets.jpg" width="480" alt="Android home screen showing four BTC widgets">
 
-*Four widgets on a single home screen: the wide BTC Ticker (top-left) shows the full price with last-fetch time and % change; the compact BTC Price (top-right) gives a square glanceable price; the BTC Mini (bottom-left) combines price and a mini CDC strip in one cell; and the CDC Strip (bottom-right) shows the full 30-day EMA crossover chart. All update independently and share a background cache.*
+*Four widgets on a single home screen: the wide BTC Large (top-left) shows the full price with last-fetch time and % change; the compact BTC Small (top-right) gives a square glanceable price; the Combined Small (bottom-left) combines price and a mini CDC strip in one cell; and the CDC Large (bottom-right) shows the full 30-day EMA crossover chart. All update independently and share a background cache.*
 
 ---
 
@@ -90,36 +90,36 @@ Six home screen widgets across three sizes. All show a live preview thumbnail in
 
 | Widget | Size | Refresh | Data source |
 |---|---|---|---|
-| BTC Ticker | 2×1 | 10 min | Binance REST |
-| CDC Strip | 2×1 | Daily | Kraken OHLC |
-| BTC Price | 1×1 | 10 min | Binance REST |
-| CDC | 1×1 | Daily | Kraken OHLC |
-| BTC + CDC | 2×1 | 10 min (CDC lazy) | Binance + Kraken |
-| BTC Mini | 1×1 | 10 min (CDC lazy) | Binance + Kraken |
+| BTC Large | 2×1 | 10 min | Binance REST |
+| CDC Large | 2×1 | Daily | Kraken OHLC |
+| BTC Small | 1×1 | 10 min | Binance REST |
+| CDC Small | 1×1 | Daily | Kraken OHLC |
+| Combined Large | 2×1 | 10 min (CDC lazy) | Binance + Kraken |
+| Combined Small | 1×1 | 10 min (CDC lazy) | Binance + Kraken |
 
-### BTC Ticker (2×1)
-
-```
-┌──────────────────────────────┐
-│ 104,888                    ↻ │
-│                   3m ago +6% │
-└──────────────────────────────┘
-```
-
-Price autoscales to fill the full widget height. % change and last-fetch time overlaid at bottom-right.
-
-### CDC Strip (2×1)
+### BTC Large (2×1)
 
 ```
-┌──────────────────────────────┐
-│ CDC · 3h ago               ↻ │
-│ ▄▄▂▂██▃▃▅▅██▄▄▂▂▇▇▄▄▂▂██   │
-└──────────────────────────────┘
+┌──────────────────────────────────┐
+│ 104,888                        ↻ │
+│  at 23:24 (5m ago)          +6% │
+└──────────────────────────────────┘
+```
+
+Price autoscales to fill the full widget height. % change and last-fetch time (absolute 24hr clock + relative age) overlaid at bottom-right.
+
+### CDC Large (2×1)
+
+```
+┌──────────────────────────────────┐
+│ CDC · at 23:24 (3h ago)        ↻ │
+│ ▄▄▂▂██▃▃▅▅██▄▄▂▂▇▇▄▄▂▂██       │
+└──────────────────────────────────┘
 ```
 
 30-day EMA(12)/EMA(26) crossover strip. Green bars = bull, red bars = bear, today's bar at 40% opacity. Refreshes once daily; falls back to cached data when offline.
 
-### BTC Price (1×1)
+### BTC Small (1×1)
 
 ```
 ┌──────────────┐
@@ -131,7 +131,7 @@ Price autoscales to fill the full widget height. % change and last-fetch time ov
 
 Compact single-cell price widget. Same autoscaled price, % change overlaid bottom-right.
 
-### CDC (1×1)
+### CDC Small (1×1)
 
 ```
 ┌──────────────┐
@@ -143,19 +143,19 @@ Compact single-cell price widget. Same autoscaled price, % change overlaid botto
 
 CDC strip squeezed into a single cell — 30 bars with no gaps to fit the full history.
 
-### BTC + CDC (2×1)
+### Combined Large (2×1)
 
 ```
-┌─────────────────┬───────────────┐
-│                 │ CDC · 3h ago ↻│
-│    104,888      │ ▄▂█▃▅█▄▂▇▄   │
-│           +6%   │ ▅█▄▂▄█▅▂██   │
-└─────────────────┴───────────────┘
+┌─────────────────┬───────────────────────┐
+│                 │ CDC · at 23:24 (3h ago)│
+│    104,888      │ ▄▂█▃▅█▄▂▇▄          ↻ │
+│           +6%   │ ▅█▄▂▄█▅▂██            │
+└─────────────────┴───────────────────────┘
 ```
 
 Combined widget — price on the left half, CDC strip on the right half, 50/50 split. Price refreshes every 10 minutes; CDC re-fetches only when the cache is older than 12 hours.
 
-### BTC Mini (1×1)
+### Combined Small (1×1)
 
 ```
 ┌──────────────┐
@@ -219,12 +219,12 @@ btcticker/
 │   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
 ├── android/                — Capacitor Android project (build APK in Android Studio)
 │   └── app/src/main/java/com/btcticker/app/
-│       ├── PriceWidgetProvider.java       — BTC Ticker widget (2×1)
-│       ├── CdcWidgetProvider.java         — CDC Strip widget (2×1)
-│       ├── PriceWidgetSmallProvider.java  — BTC Price widget (1×1)
-│       ├── CdcWidgetSmallProvider.java    — CDC widget (1×1)
-│       ├── CombinedWidgetProvider.java    — BTC + CDC widget (2×1)
-│       ├── MiniCombinedWidgetProvider.java — BTC Mini widget (1×1)
+│       ├── PriceWidgetProvider.java       — BTC Large widget (2×1)
+│       ├── CdcWidgetProvider.java         — CDC Large widget (2×1)
+│       ├── PriceWidgetSmallProvider.java  — BTC Small widget (1×1)
+│       ├── CdcWidgetSmallProvider.java    — CDC Small widget (1×1)
+│       ├── CombinedWidgetProvider.java    — Combined Large widget (2×1)
+│       ├── MiniCombinedWidgetProvider.java — Combined Small widget (1×1)
 │       └── BootReceiver.java              — reschedules alarms after reboot
 ├── capacitor.config.json   — Capacitor config (webDir: www)
 └── package.json            — Capacitor dependencies only
@@ -270,6 +270,14 @@ firefox --kiosk index.html
 ---
 
 ## Changelog
+
+### v1.7.0
+- Renamed all six widget picker labels: BTC Large, BTC Small, CDC Large, CDC Small, Combined Large, Combined Small
+- Fixed 2×1 widget grid size: `minWidth` corrected from 180dp to 110dp — was occupying 3 columns instead of 2 on POCO and Samsung launchers
+- Last-fetch time now shows absolute 24hr clock + relative age: `at 23:24 (5m ago)`
+- Last-fetch time colour changed to white (#ffffff) across all widgets
+- Fixed missing initial label text on CDC Small widget (showed blank until first alarm)
+- Added missing `minResizeWidth`/`minResizeHeight` to Combined Small widget info
 
 ### v1.6.0
 - Added 1×1 BTC Mini widget — price in the top half, CDC strip in the bottom half, 50/50 vertical split

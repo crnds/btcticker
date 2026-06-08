@@ -44,8 +44,8 @@
         android:layout_alignParentBottom="true"
         android:layout_toStartOf="@id/preview_change"
         android:layout_marginEnd="5dp"
-        android:text="just now"
-        android:textColor="#444444"
+        android:text="at 23:24 (5m ago)"
+        android:textColor="#ffffff"
         android:textSize="9sp"
         android:fontFamily="monospace" />
 

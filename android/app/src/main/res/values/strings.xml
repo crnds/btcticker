@@ -4,12 +4,12 @@
     <string name="title_activity_main">CRN Ticker</string>
     <string name="package_name">com.btcticker.app</string>
     <string name="custom_url_scheme">com.btcticker.app</string>
-    <string name="widget_price_title">BTC Ticker</string>
-    <string name="widget_cdc_title">CDC Strip</string>
+    <string name="widget_price_title">BTC Large</string>
+    <string name="widget_cdc_title">CDC Large</string>
     <string name="widget_cdc_label">CDC</string>
     <string name="widget_refresh">Refresh</string>
-    <string name="widget_price_small_title">BTC Price</string>
-    <string name="widget_cdc_small_title">CDC</string>
-    <string name="widget_combined_title">BTC + CDC</string>
-    <string name="widget_mini_combined_title">BTC Mini</string>
+    <string name="widget_price_small_title">BTC Small</string>
+    <string name="widget_cdc_small_title">CDC Small</string>
+    <string name="widget_combined_title">Combined Large</string>
+    <string name="widget_mini_combined_title">Combined Small</string>
 </resources>

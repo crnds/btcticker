@@ -12,8 +12,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true"
-        android:text="CDC · just now"
-        android:textColor="#555555"
+        android:text="CDC · at 23:24 (5m ago)"
+        android:textColor="#ffffff"
         android:textSize="9sp"
         android:fontFamily="monospace" />
 
