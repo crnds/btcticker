@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:targetCellWidth="2"
+    android:targetCellHeight="1"
+    android:minWidth="110dp"
+    android:minHeight="64dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="64dp"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_feargreed"
+    android:previewLayout="@layout/widget_feargreed_preview"
+    android:previewImage="@mipmap/ic_launcher"
+    android:label="@string/widget_feargreed_title"
+    android:widgetCategory="home_screen"
+    android:resizeMode="horizontal" />

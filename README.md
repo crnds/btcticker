@@ -23,7 +23,7 @@
 
 ## Android
 
-[**Download APK (v1.7.0)**](https://github.com/crnds/btcticker/releases/tag/v1.7.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.8.0)**](https://github.com/crnds/btcticker/releases/tag/v1.8.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
@@ -86,7 +86,7 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 
 ## Android Widgets
 
-Six home screen widgets across three sizes. All show a live preview thumbnail in the widget picker, have an orange refresh button, and automatically reschedule their alarms after device reboot.
+Seven home screen widgets across three sizes. All show a live preview thumbnail in the widget picker, have an orange refresh button, and automatically reschedule their alarms after device reboot.
 
 | Widget | Size | Refresh | Data source |
 |---|---|---|---|
@@ -96,6 +96,7 @@ Six home screen widgets across three sizes. All show a live preview thumbnail in
 | CDC Small | 1×1 | Daily | Kraken OHLC |
 | Combined Large | 2×1 | 10 min (CDC lazy) | Binance + Kraken |
 | Combined Small | 1×1 | 10 min (CDC lazy) | Binance + Kraken |
+| Fear & Greed | 2×1 | Daily | CoinMarketCap |
 
 ### BTC Large (2×1)
 
@@ -167,6 +168,27 @@ Combined widget — price on the left half, CDC strip on the right half, 50/50 s
 ```
 
 Compact single-cell combined widget — price with % change in the top half, CDC strip in the bottom half, 50/50 vertical split. Price refreshes every 10 minutes; CDC re-fetches only when the cache is older than 12 hours.
+
+### Fear & Greed (2×1)
+
+```
+┌──────────────────────────────────┐
+│ Fear & Greed                   ↻ │
+│      ●                           │
+│   ██ ██ ██ ██ ██                 │
+│        15                        │
+│    Extreme fear                  │
+└──────────────────────────────────┘
+```
+
+Semicircular gauge with 5 colour-coded arc segments (red → orange → yellow → light green → green). A white dot marks the current value position on the arc. Fetches CoinMarketCap Fear & Greed Index once daily; falls back to cached value when offline.
+
+| Range | Label | Colour |
+|---|---|---|
+| 0–24 | Extreme Fear | `#ff1744` red |
+| 25–49 | Fear | `#ff6d00` orange |
+| 50–74 | Greed | `#69f0ae` light green |
+| 75–100 | Extreme Greed | `#00e676` bright green |
 
 ---
 
@@ -270,6 +292,9 @@ firefox --kiosk index.html
 ---
 
 ## Changelog
+
+### v1.8.0
+- Added Fear & Greed widget (2×1) — semicircular gauge with 5 colour-coded segments, white dot indicator, and value/label rendered as a Canvas bitmap; fetches CoinMarketCap Fear & Greed Index once daily
 
 ### v1.7.0
 - Renamed all six widget picker labels: BTC Large, BTC Small, CDC Large, CDC Small, Combined Large, Combined Small
