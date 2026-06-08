@@ -247,6 +247,7 @@ btcticker/
 │       ├── CdcWidgetSmallProvider.java    — CDC Small widget (1×1)
 │       ├── CombinedWidgetProvider.java    — Combined Large widget (2×1)
 │       ├── MiniCombinedWidgetProvider.java — Combined Small widget (1×1)
+│       ├── FearGreedWidgetProvider.java   — Fear & Greed widget (2×1)
 │       └── BootReceiver.java              — reschedules alarms after reboot
 ├── capacitor.config.json   — Capacitor config (webDir: www)
 └── package.json            — Capacitor dependencies only
