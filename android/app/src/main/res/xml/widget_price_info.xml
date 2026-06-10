@@ -11,5 +11,4 @@
     android:initialLayout="@layout/widget_price"
     android:widgetCategory="home_screen"
     android:resizeMode="horizontal"
-    android:previewImage="@mipmap/ic_launcher"
     android:previewLayout="@layout/widget_price_preview" />

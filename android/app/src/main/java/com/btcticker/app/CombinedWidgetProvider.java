@@ -55,6 +55,14 @@ public class CombinedWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
         scheduleAlarm(ctx);
+        // Quick skeleton for instant feedback when adding from the widget picker
+        for (int id : ids) {
+            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_combined);
+            v.setTextViewText(R.id.widget_combined_price, "—");
+            v.setTextViewText(R.id.widget_combined_cdc_label, "CDC · –");
+            v.setOnClickPendingIntent(R.id.widget_combined_refresh_btn, manualRefreshIntent(ctx));
+            mgr.updateAppWidget(id, v);
+        }
         fetchAndUpdate(ctx, mgr, ids);
     }
 
@@ -77,6 +85,7 @@ public class CombinedWidgetProvider extends AppWidgetProvider {
         if (ACTION_MANUAL_REFRESH.equals(action)) {
             for (int id : ids) {
                 RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_combined);
+                v.setTextViewText(R.id.widget_combined_price, "—");
                 v.setTextViewText(R.id.widget_combined_cdc_label, "CDC · fetching…");
                 v.setOnClickPendingIntent(R.id.widget_combined_refresh_btn, manualRefreshIntent(ctx));
                 mgr.updateAppWidget(id, v);

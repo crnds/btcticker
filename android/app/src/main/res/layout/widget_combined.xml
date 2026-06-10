@@ -17,6 +17,7 @@
             android:id="@+id/widget_combined_price"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:text="—"
             android:textColor="#e0e0e0"
             android:fontFamily="sans-serif-condensed"
             android:textStyle="bold"

@@ -9,7 +9,6 @@
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_feargreed"
     android:previewLayout="@layout/widget_feargreed_preview"
-    android:previewImage="@mipmap/ic_launcher"
     android:label="@string/widget_feargreed_title"
     android:widgetCategory="home_screen"
     android:resizeMode="horizontal" />

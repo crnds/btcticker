@@ -55,6 +55,14 @@ public class MiniCombinedWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
         scheduleAlarm(ctx);
+        // Quick skeleton for instant feedback when adding from the widget picker
+        for (int id : ids) {
+            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_mini_combined);
+            v.setTextViewText(R.id.widget_mini_price, "—");
+            v.setTextViewText(R.id.widget_mini_change, "");
+            v.setOnClickPendingIntent(R.id.widget_mini_refresh_btn, manualRefreshIntent(ctx));
+            mgr.updateAppWidget(id, v);
+        }
         fetchAndUpdate(ctx, mgr, ids);
     }
 
@@ -77,7 +85,7 @@ public class MiniCombinedWidgetProvider extends AppWidgetProvider {
         if (ACTION_MANUAL_REFRESH.equals(action)) {
             for (int id : ids) {
                 RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_mini_combined);
-                v.setTextViewText(R.id.widget_mini_price, "…");
+                v.setTextViewText(R.id.widget_mini_price, "—");
                 v.setOnClickPendingIntent(R.id.widget_mini_refresh_btn, manualRefreshIntent(ctx));
                 mgr.updateAppWidget(id, v);
             }

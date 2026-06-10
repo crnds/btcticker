@@ -57,6 +57,13 @@ public class CdcWidgetProvider extends AppWidgetProvider {
     @Override
     public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
         scheduleAlarm(ctx);
+        // Show a skeleton immediately so first placement (from widget picker) doesn't look blank
+        for (int id : ids) {
+            RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_cdc);
+            v.setTextViewText(R.id.widget_cdc_label, "CDC · –");
+            v.setOnClickPendingIntent(R.id.widget_cdc_refresh_btn, manualRefreshIntent(ctx));
+            mgr.updateAppWidget(id, v);
+        }
         fetchAndUpdate(ctx, mgr, ids);
     }
 

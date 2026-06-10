@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Static preview shown in the widget picker (previewLayout, API 31+). -->
+<!-- Mimics the runtime Canvas gauge: 5-segment arc + dot indicator + value + label + time -->
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg"
-    android:padding="10dp">
+    android:padding="8dp">
 
+    <!-- Title -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -14,8 +16,9 @@
         android:text="Fear &amp; Greed"
         android:textColor="#ffffff"
         android:textStyle="bold"
-        android:textSize="10sp" />
+        android:textSize="9sp" />
 
+    <!-- Refresh -->
     <ImageButton
         android:layout_width="16dp"
         android:layout_height="16dp"
@@ -23,28 +26,89 @@
         android:src="@drawable/ic_widget_refresh"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
+        android:layout_margin="6dp"
         android:contentDescription="@string/widget_refresh" />
 
+    <!-- Gauge scale area -->
+    <LinearLayout
+        android:id="@+id/fg_scale"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerVertical="true"
+        android:layout_marginTop="-6dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <!-- 5 color segments row (proxy for the arc) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="9dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <View android:layout_width="0dp" android:layout_height="7dp" android:layout_weight="1"
+                  android:background="#ff1744" android:layout_marginEnd="1dp" />
+            <View android:layout_width="0dp" android:layout_height="7dp" android:layout_weight="1"
+                  android:background="#ff6d00" android:layout_marginEnd="1dp" />
+            <View android:layout_width="0dp" android:layout_height="7dp" android:layout_weight="1"
+                  android:background="#ffeb3b" android:layout_marginEnd="1dp" />
+            <View android:layout_width="0dp" android:layout_height="7dp" android:layout_weight="1"
+                  android:background="#69f0ae" android:layout_marginEnd="1dp" />
+            <View android:layout_width="0dp" android:layout_height="7dp" android:layout_weight="1"
+                  android:background="#00e676" />
+        </LinearLayout>
+
+        <!-- Indicator row: dot roughly above the Greed (4th) segment -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginTop="0dp">
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="3.2" />
+            <View
+                android:layout_width="5dp"
+                android:layout_height="5dp"
+                android:background="@drawable/fg_dot_preview" />
+            <View android:layout_width="0dp" android:layout_height="1dp" android:layout_weight="1.8" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Big value (colored for "Greed" range) -->
     <TextView
         android:id="@+id/preview_fg_value"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
+        android:layout_below="@id/fg_scale"
+        android:layout_marginTop="1dp"
         android:text="72"
         android:textColor="#69f0ae"
         android:textStyle="bold"
         android:fontFamily="sans-serif-condensed"
-        android:textSize="22sp"
+        android:textSize="20sp"
         android:gravity="center" />
 
+    <!-- Classification label -->
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/preview_fg_value"
+        android:layout_marginTop="-2dp"
         android:text="Greed"
         android:textColor="#94a3b8"
-        android:textSize="8sp"
+        android:textSize="7sp"
         android:fontFamily="monospace"
         android:gravity="center" />
+
+    <!-- Last update time (bottom right, matches other widgets) -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:text="at 14:05 (3h ago)"
+        android:textColor="#64748b"
+        android:textSize="6sp"
+        android:fontFamily="monospace" />
 
 </RelativeLayout>

@@ -11,5 +11,4 @@
     android:initialLayout="@layout/widget_cdc_small"
     android:widgetCategory="home_screen"
     android:resizeMode="none"
-    android:previewImage="@mipmap/ic_launcher"
     android:previewLayout="@layout/widget_cdc_small_preview" />
