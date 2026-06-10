@@ -23,7 +23,7 @@
 
 ## Android
 
-[**Download APK (v1.8.0)**](https://github.com/crnds/btcticker/releases/tag/v1.8.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.9.0)**](https://github.com/crnds/btcticker/releases/tag/v1.9.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
 
@@ -293,6 +293,16 @@ firefox --kiosk index.html
 ---
 
 ## Changelog
+
+### v1.9.0
+- **Widget picker previews**: All 7 widgets now show high-quality, representative preview thumbnails in the Android widget selection screen (long-press home → Widgets).
+- Removed the generic app launcher icon as `previewImage` fallback across all widget providers — was displaying the wrong icon on many devices and launchers.
+- Significantly improved the Fear & Greed preview layout to include the 5 colour-coded arc segments, position indicator dot, value, classification label, and timestamp — now visually matches the actual rendered gauge.
+- Widgets no longer appear blank or empty on first placement from the picker: added immediate skeleton states (`—` for prices, `CDC · –` for strips, etc.) in `onUpdate` before network fetches complete.
+- Added missing default `—` placeholder to the Combined Large (2×1) price pane.
+- Fixed incorrect "1×1" comment for the Fear & Greed widget in `AndroidManifest.xml`.
+- Added `android/.idea/` to `.gitignore` (prevented IDE files from leaking into the repo).
+- Minor preview layout polish (refresh button sizes, padding, and positioning for better visual parity with runtime widgets).
 
 ### v1.8.0
 - Added Fear & Greed widget (2×1) — semicircular gauge with 5 colour-coded segments, white dot indicator, and value/label rendered as a Canvas bitmap; fetches CoinMarketCap Fear & Greed Index once daily
