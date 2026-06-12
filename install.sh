@@ -22,6 +22,9 @@ done
 
 if [[ -z "$BROWSER" ]]; then
   warn "No supported browser found. Installing Chromium..."
+  command -v apt-get &>/dev/null || \
+    error "No apt-get on this system. Install Firefox ESR or Chromium manually and re-run."
+  sudo apt-get update
   sudo apt-get install -y chromium-browser || sudo apt-get install -y chromium || \
     error "Could not install a browser. Install Firefox ESR or Chromium manually and re-run."
   for b in chromium-browser chromium; do
@@ -33,16 +36,25 @@ info "Browser: $BROWSER"
 
 # Suppress Firefox first-run dialogs
 if [[ "$BROWSER" == firefox* ]]; then
-  PROFILE_DIR=$(find "$HOME/.mozilla/firefox" -maxdepth 1 -name "*.default*" -type d 2>/dev/null | head -1 || true)
+  # prefer the default-release profile (modern Firefox); fall back to any *.default*
+  PROFILE_DIR=$(find "$HOME/.mozilla/firefox" -maxdepth 1 -name "*.default-release" -type d 2>/dev/null | head -1 || true)
+  [[ -z "$PROFILE_DIR" ]] && \
+    PROFILE_DIR=$(find "$HOME/.mozilla/firefox" -maxdepth 1 -name "*.default*" -type d 2>/dev/null | head -1 || true)
   if [[ -n "$PROFILE_DIR" ]]; then
-    cat >> "$PROFILE_DIR/user.js" <<'PREFS'
+    # sentinel keeps re-runs from appending duplicate prefs
+    if grep -q 'btcticker-kiosk prefs' "$PROFILE_DIR/user.js" 2>/dev/null; then
+      info "Firefox first-run prefs already present"
+    else
+      cat >> "$PROFILE_DIR/user.js" <<'PREFS'
+// btcticker-kiosk prefs
 user_pref("browser.startup.firstrunSkipsHomepage", true);
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("datareporting.policy.dataSubmissionPolicyAccepted", true);
 user_pref("datareporting.policy.dataSubmissionPolicyNotifiedTime", "9999999999999");
 user_pref("browser.rights.3.shown", true);
 PREFS
-    info "Firefox first-run suppressed"
+      info "Firefox first-run suppressed"
+    fi
   else
     warn "No Firefox profile found — first-run dialogs may appear on first launch"
   fi

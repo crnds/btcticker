@@ -2,7 +2,10 @@ name: Update CDC data
 
 on:
   schedule:
-    - cron: '5 0 * * *'  # 00:05 UTC daily, just after Binance daily candle closes
+    # 00:05 UTC daily, just after the Kraken daily candle closes; scheduled
+    # runs typically start a few hours late, so the newest block reflects the
+    # in-progress day
+    - cron: '5 0 * * *'
   workflow_dispatch:       # allow manual runs from GitHub UI
 
 permissions:
@@ -11,12 +14,11 @@ permissions:
 jobs:
   update-cdc:
     runs-on: ubuntu-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
-      - uses: actions/checkout@v4
+      # actions pinned to commit SHAs — this workflow has contents:write
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
 
