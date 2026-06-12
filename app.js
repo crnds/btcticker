@@ -1,4 +1,4 @@
-// --- Exchange configs ---
+// ── EXCHANGE CONFIGS ──────────────────────────────────────
 const EXCHANGES = {
   binance: {
     label: 'Binance',
@@ -13,14 +13,17 @@ const EXCHANGES = {
     label: 'Bitstamp',
     url: 'wss://ws.bitstamp.net',
     async init() {
+      const ctrl = new AbortController();
+      const tid  = setTimeout(() => ctrl.abort(), 8000);
       try {
-        const r = await fetch('https://www.bitstamp.net/api/v2/ticker/btcusd/');
+        const r = await fetch('https://www.bitstamp.net/api/v2/ticker/btcusd/', { signal: ctrl.signal });
         const d = await r.json();
         const change = d.open
           ? ((parseFloat(d.last) - parseFloat(d.open)) / parseFloat(d.open)) * 100
           : null;
         return { change };
       } catch { return { change: null }; }
+      finally { clearTimeout(tid); }
     },
     subscribe(ws) {
       ws.send(JSON.stringify({ event: 'bts:subscribe', data: { channel: 'live_trades_btcusd' } }));
@@ -76,15 +79,38 @@ const EXCHANGES = {
   }
 };
 
-const EXCHANGE_KEY = 'btcticker_exchange';
-let currentExchange = localStorage.getItem(EXCHANGE_KEY) || 'binance';
+// ── STATE ─────────────────────────────────────────────────
+const EXCHANGE_KEY    = 'btcticker_v1_exchange';
+const STORAGE_KEY     = 'btcticker_v1_history';
+const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
+const CDC_TTL_MS      = 60 * 60 * 1000;
+const SNAPSHOT_MS     = 60_000;
+const WINDOW_MS       = 24 * 60 * 60_000;
 
-// --- State ---
-let latest = 0, latestChange = null, last = 0, lastUpdated = null, pending = false;
-let retryMs = 1000;
-let activeWs = null;
+// one-time migration from the pre-v1 unversioned keys
+try {
+  for (const [oldKey, newKey] of [['btcticker_exchange', EXCHANGE_KEY],
+                                  ['btcticker_history',  STORAGE_KEY]]) {
+    const v = localStorage.getItem(oldKey);
+    if (v !== null && localStorage.getItem(newKey) === null) localStorage.setItem(newKey, v);
+    localStorage.removeItem(oldKey);
+  }
+} catch {}
 
-// --- DOM ---
+const STATE = {
+  exchange: localStorage.getItem(EXCHANGE_KEY) || 'binance',
+  latest: 0,
+  latestChange: null,
+  last: 0,
+  lastUpdated: null,
+  pending: false,
+  retryMs: 1000,
+  ws: null,
+  reconnectTimer: null,
+  history: []
+};
+
+// ── DOM ───────────────────────────────────────────────────
 const el        = document.getElementById('price');
 const pulse     = document.getElementById('ws-pulse');
 const label     = document.getElementById('ws-label');
@@ -93,11 +119,7 @@ const menuBtn   = document.getElementById('menu-btn');
 const menuList  = document.getElementById('menu-list');
 const loadingEl = document.getElementById('loading');
 
-// --- localStorage history ---
-const STORAGE_KEY = 'btcticker_history';
-const SNAPSHOT_MS = 60_000;
-const WINDOW_MS   = 24 * 60 * 60_000;
-
+// ── LOCALSTORAGE HISTORY ──────────────────────────────────
 function loadHistory() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -111,17 +133,19 @@ function saveHistory(h) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(h)); } catch {}
 }
 
-let history = loadHistory();
+STATE.history = loadHistory();
 
 setInterval(() => {
-  if (!latest) return;
+  // only snapshot prices confirmed live within the last interval — a dead
+  // socket must not keep stamping the old price with fresh timestamps
+  if (!STATE.latest || !STATE.lastUpdated || Date.now() - STATE.lastUpdated >= SNAPSHOT_MS) return;
   const now = Date.now();
-  history.push({ ts: now, price: latest, change: latestChange });
-  history = history.filter(e => e.ts >= now - WINDOW_MS);
-  saveHistory(history);
+  STATE.history.push({ ts: now, price: STATE.latest, change: STATE.latestChange });
+  STATE.history = STATE.history.filter(e => e.ts >= now - WINDOW_MS);
+  saveHistory(STATE.history);
 }, SNAPSHOT_MS);
 
-// --- Display ---
+// ── DISPLAY ───────────────────────────────────────────────
 function fmt(n, change) {
   const [int, dec] = n.toFixed(2).split('.');
   const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
@@ -140,47 +164,57 @@ function setStatus(state) {
     : state === 'reconnecting' ? 'reconnecting…' : 'connecting…';
 }
 
+function fmtAgo(ms) {
+  const secs = Math.floor(ms / 1000);
+  if (secs < 5)     return 'just now';
+  if (secs < 60)    return secs + 's ago';
+  if (secs < 3600)  return Math.floor(secs / 60) + 'm ago';
+  return Math.floor(secs / 3600) + 'h ago';
+}
+
 setInterval(() => {
-  if (!lastUpdated) return;
-  const secs = Math.floor((Date.now() - lastUpdated) / 1000);
-  time.textContent = secs < 5 ? 'just now' : secs + 's ago';
+  if (!STATE.lastUpdated) return;
+  time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
 }, 1000);
 
 setInterval(() => {
-  if (latest === last) return;
-  last = latest;
-  if (!pending) {
-    pending = true;
-    requestAnimationFrame(() => { el.innerHTML = fmt(last, latestChange); pending = false; });
+  if (STATE.latest === STATE.last) return;
+  STATE.last = STATE.latest;
+  if (!STATE.pending) {
+    STATE.pending = true;
+    requestAnimationFrame(() => { el.innerHTML = fmt(STATE.last, STATE.latestChange); STATE.pending = false; });
   }
 }, 500);
 
 // show last known price on load, or loading animation if no history
-if (history.length) {
-  const e = history[history.length - 1];
-  latest = e.price; latestChange = e.change;
-  el.innerHTML = fmt(latest, latestChange);
+if (STATE.history.length) {
+  const e = STATE.history[STATE.history.length - 1];
+  STATE.latest = e.price;
+  STATE.latestChange = e.change;
+  STATE.lastUpdated = e.ts; // show the real age of the cached price, not "current"
+  el.innerHTML = fmt(STATE.latest, STATE.latestChange);
+  time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
 } else {
   loadingEl.classList.add('active');
 }
 
-// --- WebSocket ---
+// ── WEBSOCKET ─────────────────────────────────────────────
 function connect(key) {
-  if (activeWs) { activeWs.onclose = null; activeWs.onmessage = null; activeWs.close(); activeWs = null; }
-  retryMs = 1000;
+  if (STATE.ws) { STATE.ws.onclose = null; STATE.ws.onmessage = null; STATE.ws.close(); STATE.ws = null; }
+  clearTimeout(STATE.reconnectTimer);
   setStatus('connecting');
 
   const exchange = EXCHANGES[key];
   const ws = new WebSocket(exchange.url);
-  activeWs = ws;
+  STATE.ws = ws;
 
   ws.onopen = async () => {
-    retryMs = 1000;
+    STATE.retryMs = 1000;
     setStatus('live');
     if (exchange.subscribe) exchange.subscribe(ws);
     if (exchange.init) {
       const { change } = await exchange.init();
-      if (change !== null && !isNaN(change)) latestChange = change;
+      if (change !== null && !isNaN(change)) STATE.latestChange = change;
     }
     initCDC();
   };
@@ -188,36 +222,53 @@ function connect(key) {
   ws.onerror = () => ws.close();
 
   ws.onclose = () => {
-    if (activeWs !== ws) return; // stale socket from a previous exchange
+    if (STATE.ws !== ws) return; // stale socket from a previous exchange
     setStatus('reconnecting');
-    setTimeout(() => connect(currentExchange), retryMs);
-    retryMs = Math.min(retryMs * 2, 16_000);
+    STATE.reconnectTimer = setTimeout(() => connect(STATE.exchange), STATE.retryMs);
+    STATE.retryMs = Math.min(STATE.retryMs * 2, 16_000);
   };
 
   ws.onmessage = (e) => {
     const result = exchange.parse(e.data);
     if (!result || !result.price) return;
-    latest = result.price;
-    if (result.change !== null && !isNaN(result.change)) latestChange = result.change;
-    lastUpdated = Date.now();
+    STATE.latest = result.price;
+    if (result.change !== null && !isNaN(result.change)) STATE.latestChange = result.change;
+    STATE.lastUpdated = Date.now();
     loadingEl.classList.remove('active');
 
-    if (!history.length) {
-      history.push({ ts: Date.now(), price: latest, change: latestChange });
-      saveHistory(history);
+    if (!STATE.history.length) {
+      STATE.history.push({ ts: Date.now(), price: STATE.latest, change: STATE.latestChange });
+      saveHistory(STATE.history);
     }
   };
 }
 
-// --- Menu ---
+// Bitstamp's % change comes from a one-off REST call, not the trade stream —
+// refresh it periodically so it doesn't go stale on a long-running kiosk
+setInterval(async () => {
+  const exchange = EXCHANGES[STATE.exchange];
+  if (!exchange.init || !STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) return;
+  const { change } = await exchange.init();
+  if (change !== null && !isNaN(change)) STATE.latestChange = change;
+}, 5 * 60_000);
+
+// ── MENU ──────────────────────────────────────────────────
 function updateActive() {
-  menuList.querySelectorAll('li').forEach(li =>
-    li.classList.toggle('active', li.dataset.exchange === currentExchange)
+  menuList.querySelectorAll('button[data-exchange]').forEach(btn =>
+    btn.classList.toggle('active', btn.dataset.exchange === STATE.exchange)
   );
 }
 
-function closeMenu() { menuList.classList.remove('open'); }
-function openMenu()  { updateActive(); menuList.classList.add('open'); }
+function closeMenu() {
+  menuList.classList.remove('open');
+  menuBtn.setAttribute('aria-expanded', 'false');
+}
+
+function openMenu() {
+  updateActive();
+  menuList.classList.add('open');
+  menuBtn.setAttribute('aria-expanded', 'true');
+}
 
 menuBtn.addEventListener('click', () => {
   menuList.classList.contains('open') ? closeMenu() : openMenu();
@@ -228,22 +279,22 @@ document.addEventListener('click', (e) => {
 });
 
 menuList.addEventListener('click', (e) => {
-  const li = e.target.closest('li');
-  if (!li) return;
-  const key = li.dataset.exchange;
-  if (!key) return;
+  const btn = e.target.closest('button[data-exchange]');
+  if (!btn) return;
+  const key = btn.dataset.exchange;
   closeMenu();
-  if (key === currentExchange) return;
-  currentExchange = key;
-  localStorage.setItem(EXCHANGE_KEY, key);
-  latest = 0; latestChange = null; last = 0; lastUpdated = null;
+  if (key === STATE.exchange) return;
+  STATE.exchange = key;
+  try { localStorage.setItem(EXCHANGE_KEY, key); } catch {}
+  STATE.latest = 0; STATE.latestChange = null; STATE.last = 0; STATE.lastUpdated = null;
   el.innerHTML = '';
+  time.textContent = '';
   loadingEl.classList.add('active');
   updateActive();
   connect(key);
 });
 
-// --- Fullscreen ---
+// ── FULLSCREEN ────────────────────────────────────────────
 const fsBtn  = document.getElementById('fullscreen-btn');
 const fsIcon = document.getElementById('fs-icon');
 const EXPAND_D   = 'M1 6V1H6M15 6V1H10M1 10V15H6M15 10V15H10';
@@ -277,6 +328,7 @@ fsBtn.addEventListener('click', toggleFullscreen);
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') toggleFullscreen();
+  if (e.key === 'Escape') closeMenu();
 });
 
 document.addEventListener('fullscreenchange',       onFullscreenChange);
@@ -284,9 +336,6 @@ document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) initCDC(); });
 
 // ── CDC ACTION ZONE ───────────────────────────────────────
-const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
-const CDC_TTL_MS      = 60 * 60 * 1000;
-
 function calcEMA(closes, period) {
   const k   = 2 / (period + 1);
   const out = new Array(closes.length).fill(null);
@@ -308,7 +357,7 @@ async function fetchCDCBlocks() {
 
   // Tier 2: local data file (data/cdc.js sets window.LOCAL_CDC)
   if (window.LOCAL_CDC?.blocks?.length === 30 && window.LOCAL_CDC.blocks[0]?.diff != null) {
-    localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks: window.LOCAL_CDC.blocks }));
+    try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks: window.LOCAL_CDC.blocks })); } catch {}
     return window.LOCAL_CDC.blocks;
   }
 
@@ -325,6 +374,7 @@ async function fetchCDCBlocks() {
     const result  = json.result;
     const pairKey = Object.keys(result).find(k => k !== 'last');
     const closes  = result[pairKey].slice(-100).map(c => parseFloat(c[4]));
+    if (closes.length < 30 + 26) return null; // need 30 blocks + EMA26 warmup
     const ema12   = calcEMA(closes, 12);
     const ema26   = calcEMA(closes, 26);
 
@@ -332,7 +382,7 @@ async function fetchCDCBlocks() {
     for (let i = closes.length - 30; i < closes.length; i++) {
       blocks.push({ bull: ema12[i] > ema26[i], today: i === closes.length - 1, diff: Math.abs(ema12[i] - ema26[i]) });
     }
-    localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks }));
+    try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks })); } catch {}
     return blocks;
   } catch {
     clearTimeout(tid);
@@ -342,7 +392,11 @@ async function fetchCDCBlocks() {
 
 function renderCDC(blocks) {
   const strip = document.getElementById('cdc-strip');
-  if (!blocks) return;
+  if (!blocks) {
+    // keep previously rendered blocks; only show the error when there's nothing
+    if (!strip.childElementCount) strip.innerHTML = '<span class="cdc-error">CDC unavailable</span>';
+    return;
+  }
   const diffs = blocks.map(b => b.diff);
   const minD  = Math.min(...diffs);
   const maxD  = Math.max(...diffs);
@@ -353,6 +407,9 @@ function renderCDC(blocks) {
     const mt = b.bull ? (MAX_H - h) : MAX_H;
     return `<div class="cdc-slot"><div class="cdc-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
   }).join('');
+  const bullCount = blocks.filter(b => b.bull).length;
+  strip.setAttribute('aria-label',
+    `CDC Action Zone: ${bullCount} of ${blocks.length} days bullish`);
 }
 
 async function initCDC() {
@@ -361,7 +418,7 @@ async function initCDC() {
 
 setInterval(initCDC, CDC_TTL_MS);
 
-// --- Init ---
+// ── INIT ──────────────────────────────────────────────────
 updateActive();
-connect(currentExchange);
+connect(STATE.exchange);
 initCDC();

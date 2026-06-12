@@ -18,6 +18,11 @@
       --bull: #00e676;
       --bear: #ff1744;
       --warn: #fbbf24;
+      --warn-text: #fde68a;
+      --warn-border: rgba(251,191,36,0.35);
+      --stale-text: #fecdd3;
+      --stale-border: rgba(244,63,94,0.35);
+      --line: rgba(255,255,255,0.1);
       --radius: 8px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -115,7 +120,7 @@
       left: 0; right: 0;
       top: 80px;
       height: 1px;
-      background: rgba(255,255,255,0.1);
+      background: var(--line);
       pointer-events: none;
     }
     .db-slot {
@@ -149,8 +154,8 @@
       color: var(--text2);
       margin-bottom: 16px;
     }
-    .notice.warn  { border-color: rgba(251,191,36,0.35); color: #fde68a; }
-    .notice.stale { border-color: rgba(244,63,94,0.35);  color: #fecdd3; }
+    .notice.warn  { border-color: var(--warn-border);  color: var(--warn-text); }
+    .notice.stale { border-color: var(--stale-border); color: var(--stale-text); }
     .notice strong { color: var(--text); font-weight: 500; }
 
     /* Table */
@@ -359,12 +364,16 @@
   const cdc     = window.LOCAL_CDC;
   const noticeEl = document.getElementById('freshness-notice');
 
-  if (!cdc || !cdc.blocks) {
+  if (!cdc || !cdc.blocks || !cdc.blocks.length) {
     noticeEl.className = 'notice stale';
     noticeEl.innerHTML = '<strong>data/cdc.js not generated yet.</strong> Run <code>python3 fetch_cdc.py</code> to populate it.';
   } else {
     const age    = hoursAgo(cdc.generated);
     const blocks = cdc.blocks;
+    // day labels are anchored to when the data was generated, not to the
+    // viewing date — stale data must not be labelled "today"
+    const genTs  = new Date(cdc.generated).getTime();
+    const fresh  = age < 24;
 
     // Freshness notice
     if (age > 48) {
@@ -417,8 +426,9 @@
     }).join('');
 
     // Date range labels
-    const startTs = Date.now() - (blocks.length - 1) * 86_400_000;
+    const startTs = genTs - (blocks.length - 1) * 86_400_000;
     document.getElementById('cdc-label-start').textContent = fmtDate(startTs);
+    if (!fresh) document.getElementById('cdc-label-end').textContent = fmtDate(genTs);
 
     // Signal breakdown
     const bullBlocks = blocks.filter(b => b.bull);
@@ -433,10 +443,9 @@
       bearBlocks.length ? '$' + Math.round(avg(bearBlocks.map(b => b.diff))).toLocaleString() : '—';
 
     // Block detail table (newest first)
-    const now = new Date();
     document.getElementById('block-table').innerHTML = [...blocks].reverse().map((b, i) => {
-      const dayTs   = now.getTime() - i * 86_400_000;
-      const dayLabel = i === 0
+      const dayTs   = genTs - i * 86_400_000;
+      const dayLabel = i === 0 && fresh
         ? `Today <span style="color:var(--muted);font-size:11px">(incomplete)</span>`
         : fmtDate(dayTs);
       return `<tr>
@@ -444,7 +453,7 @@
         <td>${dayLabel}</td>
         <td><span class="dot ${b.bull ? 'bull' : 'bear'}"></span><span class="${b.bull ? 'bull' : 'bear'}">${b.bull ? 'Bullish' : 'Bearish'}</span></td>
         <td>$${b.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-        <td style="color:var(--muted);font-size:12px">${i === 0 ? 'today' : ''}</td>
+        <td style="color:var(--muted);font-size:12px">${i === 0 && fresh ? 'today' : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -452,9 +461,12 @@
   // ── Price history (localStorage) ─────────────────────
   (function renderHistory() {
     try {
-      const raw = localStorage.getItem('btcticker_history');
+      const raw = localStorage.getItem('btcticker_v1_history')
+               || localStorage.getItem('btcticker_history'); // pre-v1 fallback
       if (!raw) throw new Error('empty');
-      const hist = JSON.parse(raw);
+      // the ticker prunes on write, but enforce the 24h window here too in
+      // case the ticker hasn't been opened recently
+      const hist = JSON.parse(raw).filter(e => e.ts >= Date.now() - 86_400_000);
       if (!hist.length) throw new Error('empty');
 
       document.getElementById('hist-count').textContent = hist.length.toLocaleString();
