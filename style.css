@@ -146,6 +146,7 @@ body {
 #dashboard-link {
   display: block;
   width: 100%;
+  white-space: nowrap;
   background: none;
   border: none;
   text-align: left;
