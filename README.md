@@ -23,9 +23,11 @@
 
 ## Android
 
-[**Download APK (v1.9.0)**](https://github.com/crnds/btcticker/releases/tag/v1.9.0) — sideload on any Android device (API 24+).
+[**Download APK (v1.10.0)**](https://github.com/crnds/btcticker/releases/tag/v1.10.0) — sideload on any Android device (API 24+).
 
 Enable **Install unknown apps** in Android Settings, then open the APK to install.
+
+> Upgrading from v1.9.0 or earlier? Those builds were debug-signed; v1.10.0 is the first release-signed build, so Android requires a one-time **uninstall → reinstall** (widgets need re-adding). Future updates install in place.
 
 <img src="docs/widgets.jpg" width="480" alt="Android home screen showing four BTC widgets">
 
