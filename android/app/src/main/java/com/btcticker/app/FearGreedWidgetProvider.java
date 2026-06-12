@@ -1,128 +1,81 @@
 package com.btcticker.app;
 
 import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.appwidget.AppWidgetManager;
-import android.appwidget.AppWidgetProvider;
-import android.content.ComponentName;
 import android.content.Context;
-import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.RectF;
 import android.graphics.Typeface;
-import android.os.Handler;
-import android.os.Looper;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class FearGreedWidgetProvider extends AppWidgetProvider {
+public class FearGreedWidgetProvider extends BaseWidgetProvider {
 
     static final String ACTION_REFRESH        = "com.btcticker.app.FG_WIDGET_REFRESH";
     static final String ACTION_MANUAL_REFRESH = "com.btcticker.app.FG_WIDGET_MANUAL_REFRESH";
 
-    private static final String PREFS    = "btc_feargreed_widget";
-    private static final long   INTERVAL = AlarmManager.INTERVAL_DAY;
-    private static final String API_URL  =
-        "https://pro-api.coinmarketcap.com/v3/fear-and-greed/latest";
-    private static final String API_KEY  = "483932001c504169aa323f6c0a78ca1c";
+    private static final String PREFS = "btc_feargreed_widget";
+    // alternative.me serves the same index keyless; never embed an API key here —
+    // anything in the APK is world-readable
+    private static final String API_URL = "https://api.alternative.me/fng/?limit=1";
 
     // 5 arc segments left→right: Extreme Fear, Fear, Neutral, Greed, Extreme Greed
     private static final int[] SEG_COLORS = {
         0xFFff1744, 0xFFff6d00, 0xFFffeb3b, 0xFF69f0ae, 0xFF00e676
     };
 
-    private static final ExecutorService executor = Executors.newSingleThreadExecutor();
-
-    // ── AppWidgetProvider callbacks ──────────────────────────
-
-    @Override
-    public void onUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
-        scheduleAlarm(ctx);
-        fetchAndUpdate(ctx, mgr, ids);
-    }
-
-    @Override public void onEnabled(Context ctx)  { scheduleAlarm(ctx); }
-    @Override public void onDisabled(Context ctx) { cancelAlarm(ctx); }
-
-    @Override
-    public void onReceive(Context ctx, Intent intent) {
-        super.onReceive(ctx, intent);
-        String action = intent.getAction();
-        if (!ACTION_REFRESH.equals(action) && !ACTION_MANUAL_REFRESH.equals(action)) return;
-
-        AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
-        int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, FearGreedWidgetProvider.class));
-        if (ids.length == 0) return;
-
-        fetchAndUpdate(ctx, mgr, ids);
-    }
+    @Override protected String actionRefresh()       { return ACTION_REFRESH; }
+    @Override protected String actionManualRefresh() { return ACTION_MANUAL_REFRESH; }
+    @Override protected long   intervalMs()          { return AlarmManager.INTERVAL_DAY; }
+    @Override protected int    requestCodeBase()     { return 70; }
 
     // ── Fetch ────────────────────────────────────────────────
 
-    private void fetchAndUpdate(Context ctx, AppWidgetManager mgr, int[] ids) {
-        Handler handler = new Handler(Looper.getMainLooper());
-        executor.execute(() -> {
-            int    value          = -1;
-            String classification = null;
-            long   fetchedAt      = 0;
+    @Override
+    protected RemoteViews buildUpdate(Context ctx, boolean manual) {
+        int    value          = -1;
+        String classification = null;
+        long   fetchedAt      = 0;
 
-            try {
-                HttpURLConnection conn =
-                    (HttpURLConnection) new URL(API_URL).openConnection();
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                conn.setRequestProperty("Accept",             "application/json");
-                conn.setRequestProperty("X-CMC_PRO_API_KEY", API_KEY);
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(API_URL).openConnection();
+            conn.setConnectTimeout(10000);
+            conn.setReadTimeout(10000);
+            conn.setRequestProperty("Accept", "application/json");
 
-                BufferedReader br =
-                    new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-                br.close();
-                conn.disconnect();
+            JSONObject data = new JSONObject(Http.readBody(conn))
+                .getJSONArray("data").getJSONObject(0);
+            value          = data.getInt("value");
+            classification = data.getString("value_classification");
+            fetchedAt      = System.currentTimeMillis();
 
-                JSONObject data = new JSONObject(sb.toString()).getJSONObject("data");
-                value          = data.getInt("value");
-                classification = data.getString("value_classification");
-                fetchedAt      = System.currentTimeMillis();
+            ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putInt("value",        value)
+                .putString("label",     classification)
+                .putLong("last_update", fetchedAt)
+                .apply();
+        } catch (Exception e) {
+            Log.w(TAG, "Fear & Greed fetch failed", e);
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
 
-                ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-                    .putInt("value",        value)
-                    .putString("label",     classification)
-                    .putLong("last_update", fetchedAt)
-                    .apply();
+        SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        int    dv = value          != -1   ? value          : prefs.getInt("value",       -1);
+        String dl = classification != null ? classification : prefs.getString("label",   "");
+        long   da = fetchedAt      != 0    ? fetchedAt      : prefs.getLong("last_update", 0);
 
-            } catch (Exception ignored) {}
-
-            SharedPreferences prefs = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
-            int    dv = value          != -1 ? value          : prefs.getInt("value",       -1);
-            String dl = classification != null ? classification : prefs.getString("label",   "");
-            long   da = fetchedAt      != 0   ? fetchedAt      : prefs.getLong("last_update", 0);
-
-            Bitmap bmp  = renderGauge(dv, dl != null ? dl : "", da, ctx);
-            RemoteViews v = buildViews(ctx, bmp);
-            handler.post(() -> { for (int id : ids) mgr.updateAppWidget(id, v); });
-        });
-    }
-
-    // ── View builder ─────────────────────────────────────────
-
-    private RemoteViews buildViews(Context ctx, Bitmap gauge) {
+        Bitmap bmp = renderGauge(dv, dl != null ? dl : "", da, ctx);
         RemoteViews v = new RemoteViews(ctx.getPackageName(), R.layout.widget_feargreed);
-        v.setImageViewBitmap(R.id.widget_fg_gauge, gauge);
+        v.setImageViewBitmap(R.id.widget_fg_gauge, bmp);
         v.setOnClickPendingIntent(R.id.widget_fg_refresh_btn, manualRefreshIntent(ctx));
         return v;
     }
@@ -193,7 +146,7 @@ public class FearGreedWidgetProvider extends AppWidgetProvider {
 
         // Fetch time — bottom-right, very small
         if (lastUpdate > 0) {
-            String time  = PriceWidgetProvider.timeAgo(lastUpdate);
+            String time = timeAgo(lastUpdate);
             paint.setColor(0xFF64748b);
             paint.setTextSize(6f * dp);
             float timeW = paint.measureText(time);
@@ -204,37 +157,7 @@ public class FearGreedWidgetProvider extends AppWidgetProvider {
     }
 
     private static int colorForValue(int value) {
-        if (value < 25) return Color.parseColor("#ff1744");
-        if (value < 50) return Color.parseColor("#ff6d00");
-        if (value < 75) return Color.parseColor("#69f0ae");
-        return Color.parseColor("#00e676");
-    }
-
-    // ── Alarm ────────────────────────────────────────────────
-
-    private void scheduleAlarm(Context ctx) {
-        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        if (am == null) return;
-        am.setInexactRepeating(AlarmManager.RTC,
-            System.currentTimeMillis() + INTERVAL, INTERVAL, alarmIntent(ctx));
-    }
-
-    private void cancelAlarm(Context ctx) {
-        AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.cancel(alarmIntent(ctx));
-    }
-
-    private PendingIntent alarmIntent(Context ctx) {
-        Intent i = new Intent(ctx, FearGreedWidgetProvider.class);
-        i.setAction(ACTION_REFRESH);
-        return PendingIntent.getBroadcast(ctx, 70, i,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    private PendingIntent manualRefreshIntent(Context ctx) {
-        Intent i = new Intent(ctx, FearGreedWidgetProvider.class);
-        i.setAction(ACTION_MANUAL_REFRESH);
-        return PendingIntent.getBroadcast(ctx, 71, i,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        // same quintile bands as the arc, so a Neutral 50 reads yellow, not green
+        return SEG_COLORS[Math.min(value / 20, 4)];
     }
 }
