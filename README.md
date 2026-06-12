@@ -181,14 +181,17 @@ Compact single-cell combined widget — price with % change in the top half, CDC
 └──────────────────────────────────┘
 ```
 
-Semicircular gauge with 5 colour-coded arc segments (red → orange → yellow → light green → green). A white dot marks the current value position on the arc. Fetches CoinMarketCap Fear & Greed Index once daily; falls back to cached value when offline.
+Semicircular gauge with 5 colour-coded arc segments (red → orange → yellow → light green → green). A white dot marks the current value position on the arc. Fetches the [alternative.me Fear & Greed Index](https://alternative.me/crypto/fear-and-greed-index/) (keyless API) once daily; falls back to cached value when offline.
 
-| Range | Label | Colour |
-|---|---|---|
-| 0–24 | Extreme Fear | `#ff1744` red |
-| 25–49 | Fear | `#ff6d00` orange |
-| 50–74 | Greed | `#69f0ae` light green |
-| 75–100 | Extreme Greed | `#00e676` bright green |
+The value number is coloured by the same quintile bands as the arc:
+
+| Range | Colour |
+|---|---|
+| 0–19 | `#ff1744` red |
+| 20–39 | `#ff6d00` orange |
+| 40–59 | `#ffeb3b` yellow |
+| 60–79 | `#69f0ae` light green |
+| 80–100 | `#00e676` bright green |
 
 ---
 
@@ -224,6 +227,31 @@ npx cap open android
 # 3. Build → Build APK(s) → app-debug.apk
 ```
 
+### Release build
+
+Release builds are signed and minified (R8). Signing material lives in
+`android/keystore.properties` + `android/btcticker-release.keystore` — both
+gitignored, **back them up**; losing the keystore means users must uninstall
+and reinstall to upgrade.
+
+```bash
+cd android && ./gradlew assembleRelease
+# → app/build/outputs/apk/release/app-release.apk
+```
+
+If `keystore.properties` is absent the release build falls back to unsigned.
+To regenerate signing material:
+
+```bash
+keytool -genkeypair -keystore android/btcticker-release.keystore \
+  -alias btcticker -keyalg RSA -keysize 2048 -validity 10000
+# then write android/keystore.properties:
+#   storeFile=btcticker-release.keystore
+#   storePassword=…
+#   keyAlias=btcticker
+#   keyPassword=…
+```
+
 ---
 
 ## File Structure
@@ -239,8 +267,16 @@ btcticker/
 │   └── cdc.js              — bundled CDC data (fallback when API is unavailable)
 ├── assets/
 │   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
+├── install.sh              — Linux kiosk installer (browser launcher + autostart)
+├── .github/workflows/
+│   └── update-cdc.yml      — daily GitHub Actions refresh of data/cdc.js
+├── docs/                   — README screenshots
 ├── android/                — Capacitor Android project (build APK in Android Studio)
 │   └── app/src/main/java/com/btcticker/app/
+│       ├── BaseWidgetProvider.java        — shared alarm/refresh/fetch plumbing
+│       ├── BinanceApi.java                — BTCUSDT ticker fetch + prefs cache
+│       ├── KrakenCdc.java                 — CDC blocks fetch/cache + strip renderer
+│       ├── Http.java                      — small HTTP response reader
 │       ├── PriceWidgetProvider.java       — BTC Large widget (2×1)
 │       ├── CdcWidgetProvider.java         — CDC Large widget (2×1)
 │       ├── PriceWidgetSmallProvider.java  — BTC Small widget (1×1)
@@ -280,9 +316,11 @@ firefox --kiosk index.html
 
 | Key | Contents |
 |---|---|
-| `btcticker_history` | Price snapshots (rolling 24 hr) |
-| `btcticker_exchange` | Last selected exchange |
+| `btcticker_v1_history` | Price snapshots (rolling 24 hr) |
+| `btcticker_v1_exchange` | Last selected exchange |
 | `btcticker_v1_cdc` | CDC blocks cache (1 hr TTL) |
+
+Pre-v1 unversioned keys (`btcticker_history`, `btcticker_exchange`) are migrated automatically on first load.
 
 ---
 
@@ -293,6 +331,15 @@ firefox --kiosk index.html
 ---
 
 ## Changelog
+
+### v1.10.0
+- **Security**: removed the hardcoded CoinMarketCap API key — Fear & Greed widget now uses the keyless [alternative.me](https://alternative.me/crypto/fear-and-greed-index/) API; widget receivers are no longer exported (third-party apps can't trigger refresh fetches); release builds are now signed and R8-minified (`android/keystore.properties`, gitignored); `allowBackup` disabled.
+- **Android refactor**: extracted `BaseWidgetProvider` + `BinanceApi`/`KrakenCdc`/`Http` helpers — 1,933 → ~950 lines across the widget code. Refresh broadcasts now use `goAsync()` so updates aren't killed mid-fetch; all network failures are logged (`btcticker.widget` tag); connections closed via try-with-resources.
+- **Fetch dedupe**: widget families sharing a data source reuse a fetch made within the last 60 s — multiple widgets (or a boot restart) trigger one Binance/Kraken call instead of four; manual tap always forces a fresh fetch.
+- Failed CDC fetch with no cache now shows "CDC · failed" instead of being stuck on "fetching…"; manual refresh no longer wipes the displayed price; small widgets expose data age via accessibility content description; Fear & Greed value colour now uses the same quintile bands as the arc (Neutral 50 is yellow, not green).
+- **Ticker fixes**: WebSocket backoff actually backs off now (was resetting to 1 s on every retry); pending reconnect timers cleared on exchange switch; price history is no longer fabricated while the socket is down; cached prices show their real age on load; CDC strip shows an error state when all data tiers fail.
+- **Conventions**: single `STATE` object, CSS custom-property tokens in `style.css`, `prefers-reduced-motion` support, visible focus rings, keyboard-accessible exchange menu (real buttons + ARIA), localStorage keys versioned to `btcticker_v1_*` with automatic migration.
+- **Pipeline**: `fetch_cdc.py` validates the Kraken response (error field, ≥56 candles) and writes atomically; GitHub Actions pinned to commit SHAs; `install.sh` is idempotent and runs `apt-get update` first.
 
 ### v1.9.0
 - **Widget picker previews**: All 7 widgets now show high-quality, representative preview thumbnails in the Android widget selection screen (long-press home → Widgets).
