@@ -19,3 +19,23 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# ── Capacitor / WebView bridge ────────────────────────────
+# Plugin methods are invoked reflectively from the JS bridge
+-keep public class * extends com.getcapacitor.Plugin
+-keepclasseswithmembers class * {
+    @com.getcapacitor.PluginMethod public <methods>;
+}
+-keepclasseswithmembers class * {
+    @com.getcapacitor.annotation.PermissionCallback <methods>;
+}
+-keepclasseswithmembers class * {
+    @com.getcapacitor.annotation.ActivityCallback <methods>;
+}
+-keepattributes JavascriptInterface
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
+
+# Readable stack traces from the field
+-keepattributes SourceFile,LineNumberTable
