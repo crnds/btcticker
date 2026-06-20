@@ -193,11 +193,12 @@ setInterval(() => {
 }, 500);
 
 // ── FEAR & GREED INDEX ────────────────────────────────────
-// Same daily index the home-screen widget renders, served keyless by
-// alternative.me. Shown above the 24h change, beside the price decimals.
+// CoinMarketCap's Fear & Greed index, refreshed once a day server-side and
+// committed to data/fng.js (window.LOCAL_FNG) — the CMC API needs a key, so
+// it's never fetched from the client. Shown above the 24h change, beside the
+// price decimals. Mirrors the CDC strip's file + localStorage caching.
 const FNG_STORAGE_KEY = 'btcticker_v1_fng';
-const FNG_TTL_MS      = 12 * 60 * 60 * 1000;          // index moves once a day
-const FNG_API         = 'https://api.alternative.me/fng/?limit=1';
+const FNG_TTL_MS      = 60 * 60 * 1000;               // re-read the data file hourly
 // quintile bands matching the widget's arc: fear → greed
 const FNG_COLORS = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
 function fngColor(v) { return FNG_COLORS[Math.min(Math.floor(v / 20), 4)]; }
@@ -206,30 +207,23 @@ function renderPrice() {
   if (STATE.latest) el.innerHTML = fmt(STATE.last || STATE.latest, STATE.latestChange);
 }
 
-async function fetchFearGreed() {
-  try {
-    const res  = await fetch(FNG_API);
-    const json = await res.json();
-    const d    = json.data && json.data[0];
-    if (!d) return;
-    const value          = parseInt(d.value, 10);
-    const classification = d.value_classification;
-    if (isNaN(value)) return;
-    STATE.fearGreed = { value, classification };
-    localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value, classification, ts: Date.now() }));
-    renderPrice();
-  } catch {}
-}
-
 function loadFearGreed() {
+  // Tier 1: localStorage (read from the data file within the last hour)
   try {
     const cached = JSON.parse(localStorage.getItem(FNG_STORAGE_KEY));
     if (cached && !isNaN(cached.value)) {
       STATE.fearGreed = { value: cached.value, classification: cached.classification };
-      if (Date.now() - cached.ts < FNG_TTL_MS) return;   // still fresh — skip refetch
+      if (Date.now() - cached.ts < FNG_TTL_MS) return;   // still fresh — skip re-read
     }
   } catch {}
-  fetchFearGreed();
+
+  // Tier 2: local data file (data/fng.js sets window.LOCAL_FNG)
+  const f = window.LOCAL_FNG;
+  if (f && !isNaN(f.value)) {
+    STATE.fearGreed = { value: f.value, classification: f.classification };
+    try { localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value: f.value, classification: f.classification, ts: Date.now() })); } catch {}
+    renderPrice();
+  }
 }
 
 loadFearGreed();

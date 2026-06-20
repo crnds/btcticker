@@ -299,14 +299,14 @@
         <div class="sub">0 = extreme fear · 100 = extreme greed</div>
       </div>
       <div class="card">
-        <div class="label">Last fetched</div>
+        <div class="label">Generated</div>
         <div class="value" id="fng-fetched">—</div>
         <div class="sub" id="fng-fetched-sub"></div>
       </div>
       <div class="card">
         <div class="label">Source</div>
-        <div class="value" style="font-size:15px">alternative.me</div>
-        <div class="sub">keyless · updates daily</div>
+        <div class="value" style="font-size:15px">CoinMarketCap</div>
+        <div class="sub">data/fng.js · updated daily</div>
       </div>
     </div>
 
@@ -322,18 +322,19 @@
     </div>
 
     <div class="notice" style="margin-top:16px">
-      <strong>How it works.</strong> The Crypto Fear &amp; Greed Index distils overall market
-      sentiment into one daily number from <strong>0 (extreme fear)</strong> to
-      <strong>100 (extreme greed)</strong>, blending volatility, market momentum/volume,
-      social media, market dominance and surveys. Low readings flag fear (often oversold);
+      <strong>How it works.</strong> CoinMarketCap's Crypto Fear &amp; Greed Index distils
+      overall market sentiment into one daily number from <strong>0 (extreme fear)</strong>
+      to <strong>100 (extreme greed)</strong>, blending price momentum, volatility,
+      derivatives, market composition and volume. Low readings flag fear (often oversold);
       high readings flag greed (often overbought).
       <br><br>
-      <strong>How it's fetched.</strong> The ticker pulls the latest reading from the keyless
-      <code>api.alternative.me/fng</code> feed — the same source the Android home-screen
-      widget uses — and caches it in <code>localStorage</code>
-      (<code>btcticker_v1_fng</code>) for 12&nbsp;hours, since the index only changes once a
-      day. This dashboard paints the cached value instantly, then refreshes from the source
-      in the background when the cache is older than 12&nbsp;hours.
+      <strong>How it's fetched.</strong> Because the CoinMarketCap API needs a private key,
+      it's never called from the browser. A scheduled GitHub Action runs
+      <code>python3 fetch_fng.py</code> once a day (key supplied via the
+      <code>CMC_API_KEY</code> secret), which writes the latest reading to
+      <code>data/fng.js</code> (<code>window.LOCAL_FNG</code>) and commits it — exactly like
+      the CDC strip's <code>data/cdc.js</code>. The ticker and this dashboard read that file
+      and cache it in <code>localStorage</code> (<code>btcticker_v1_fng</code>) for an hour.
     </div>
   </section>
 
@@ -424,6 +425,7 @@
 </main>
 
 <script src="data/cdc.js"></script>
+<script src="data/fng.js"></script>
 <script>
   // ── Helpers ───────────────────────────────────────────
   function fmtUSD(n) {
@@ -548,51 +550,30 @@
   }
 
   // ── Fear & Greed index ───────────────────────────────
-  // Reads the cache the ticker writes (btcticker_v1_fng); refreshes from the
-  // same keyless alternative.me feed the ticker and widget use when stale.
+  // Reads window.LOCAL_FNG from data/fng.js — generated daily server-side from
+  // the CoinMarketCap API (the key never reaches the browser).
   (function renderFearGreed() {
-    const FNG_KEY = 'btcticker_v1_fng';
-    const FNG_TTL = 12 * 60 * 60 * 1000;
-    const API     = 'https://api.alternative.me/fng/?limit=1';
-    const COLORS  = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
+    const COLORS   = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
     const colorFor = v => COLORS[Math.min(Math.floor(v / 20), 4)];
+    const fng = window.LOCAL_FNG;
 
-    function paint(value, classification, ts) {
-      const valEl = document.getElementById('fng-value');
-      valEl.textContent = value;
-      valEl.style.color = colorFor(value);
-      document.getElementById('fng-class').textContent = classification || '';
-      document.getElementById('fng-marker').style.left =
-        Math.max(0, Math.min(100, value)) + '%';
-      document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
-      if (ts) {
-        document.getElementById('fng-fetched').textContent = fmtAge((Date.now() - ts) / 3_600_000);
-        document.getElementById('fng-fetched-sub').textContent = fmtDateTime(ts);
-      }
+    if (!fng || isNaN(fng.value)) {
+      document.getElementById('fng-class').textContent =
+        'data/fng.js not generated yet — run python3 fetch_fng.py';
+      return;
     }
 
-    // 1) paint the cached value immediately
-    let cache = null;
-    try { cache = JSON.parse(localStorage.getItem(FNG_KEY)); } catch {}
-    if (cache && !isNaN(cache.value)) paint(cache.value, cache.classification, cache.ts);
+    const value = fng.value;
+    const valEl = document.getElementById('fng-value');
+    valEl.textContent = value;
+    valEl.style.color = colorFor(value);
+    document.getElementById('fng-class').textContent = fng.classification || '';
+    document.getElementById('fng-marker').style.left = Math.max(0, Math.min(100, value)) + '%';
+    document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
 
-    // 2) refresh from source if missing or stale
-    if (!cache || Date.now() - cache.ts >= FNG_TTL) {
-      fetch(API)
-        .then(r => r.json())
-        .then(j => {
-          const d = j.data && j.data[0];
-          if (!d) return;
-          const value = parseInt(d.value, 10);
-          if (isNaN(value)) return;
-          const rec = { value, classification: d.value_classification, ts: Date.now() };
-          localStorage.setItem(FNG_KEY, JSON.stringify(rec));
-          paint(rec.value, rec.classification, rec.ts);
-        })
-        .catch(() => {
-          if (!cache) document.getElementById('fng-class').textContent =
-            'unavailable — open the ticker to cache a reading';
-        });
+    if (fng.generated) {
+      document.getElementById('fng-fetched').textContent     = fmtDateTime(fng.generated);
+      document.getElementById('fng-fetched-sub').textContent = fmtAge(hoursAgo(fng.generated));
     }
   })();
 
