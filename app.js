@@ -107,7 +107,8 @@ const STATE = {
   retryMs: 1000,
   ws: null,
   reconnectTimer: null,
-  history: []
+  history: [],
+  fearGreed: null   // { value, classification } — same index the widget shows
 };
 
 // ── DOM ───────────────────────────────────────────────────
@@ -155,7 +156,12 @@ function fmt(n, change) {
     const cls  = change >= 0 ? 'pos' : 'neg';
     chgHtml = `<span class="chg ${cls}">${sign}${Math.round(change)}%</span>`;
   }
-  return intFmt + `<span class="dec-wrap">${chgHtml}<span class="dec">.${dec}</span></span>`;
+  let fngHtml = '';
+  if (STATE.fearGreed) {
+    const { value, classification } = STATE.fearGreed;
+    fngHtml = `<span class="fng" style="color:${fngColor(value)}" title="Fear &amp; Greed: ${classification}">${value}</span>`;
+  }
+  return intFmt + `<span class="dec-wrap"><span class="ind">${fngHtml}${chgHtml}</span><span class="dec">.${dec}</span></span>`;
 }
 
 function setStatus(state) {
@@ -185,6 +191,48 @@ setInterval(() => {
     requestAnimationFrame(() => { el.innerHTML = fmt(STATE.last, STATE.latestChange); STATE.pending = false; });
   }
 }, 500);
+
+// ── FEAR & GREED INDEX ────────────────────────────────────
+// Same daily index the home-screen widget renders, served keyless by
+// alternative.me. Shown above the 24h change, beside the price decimals.
+const FNG_STORAGE_KEY = 'btcticker_v1_fng';
+const FNG_TTL_MS      = 12 * 60 * 60 * 1000;          // index moves once a day
+const FNG_API         = 'https://api.alternative.me/fng/?limit=1';
+// quintile bands matching the widget's arc: fear → greed
+const FNG_COLORS = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
+function fngColor(v) { return FNG_COLORS[Math.min(Math.floor(v / 20), 4)]; }
+
+function renderPrice() {
+  if (STATE.latest) el.innerHTML = fmt(STATE.last || STATE.latest, STATE.latestChange);
+}
+
+async function fetchFearGreed() {
+  try {
+    const res  = await fetch(FNG_API);
+    const json = await res.json();
+    const d    = json.data && json.data[0];
+    if (!d) return;
+    const value          = parseInt(d.value, 10);
+    const classification = d.value_classification;
+    if (isNaN(value)) return;
+    STATE.fearGreed = { value, classification };
+    localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value, classification, ts: Date.now() }));
+    renderPrice();
+  } catch {}
+}
+
+function loadFearGreed() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(FNG_STORAGE_KEY));
+    if (cached && !isNaN(cached.value)) {
+      STATE.fearGreed = { value: cached.value, classification: cached.classification };
+      if (Date.now() - cached.ts < FNG_TTL_MS) return;   // still fresh — skip refetch
+    }
+  } catch {}
+  fetchFearGreed();
+}
+
+loadFearGreed();
 
 // show last known price on load, or loading animation if no history
 if (STATE.history.length) {
