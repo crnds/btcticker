@@ -144,6 +144,42 @@
       color: var(--muted);
     }
 
+    /* Fear & Greed gauge */
+    .fng-gauge-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 20px 14px;
+      margin-top: 10px;
+      visibility: hidden;
+    }
+    .fng-gauge {
+      position: relative;
+      height: 10px;
+      border-radius: 5px;
+      background: linear-gradient(to right,
+        #ff1744 0%, #ff6d00 25%, #ffeb3b 50%, #69f0ae 75%, #00e676 100%);
+    }
+    .fng-marker {
+      position: absolute;
+      top: -4px;
+      left: 0;
+      width: 4px;
+      height: 18px;
+      border-radius: 2px;
+      background: #fff;
+      transform: translateX(-50%);
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.55);
+      transition: left 0.3s ease;
+    }
+    .fng-scale {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
     /* Notice */
     .notice {
       background: var(--surface);
@@ -245,6 +281,59 @@
         <span id="cdc-label-start">—</span>
         <span id="cdc-label-end">today</span>
       </div>
+    </div>
+  </section>
+
+  <!-- Fear & Greed index -->
+  <section class="section">
+    <div class="section-title">Market sentiment — Fear &amp; Greed index</div>
+    <div class="grid">
+      <div class="card">
+        <div class="label">Current index</div>
+        <div class="value" id="fng-value">—</div>
+        <div class="sub" id="fng-class">waiting for data…</div>
+      </div>
+      <div class="card">
+        <div class="label">Scale</div>
+        <div class="value" style="font-size:15px">0 – 100</div>
+        <div class="sub">0 = extreme fear · 100 = extreme greed</div>
+      </div>
+      <div class="card">
+        <div class="label">Last fetched</div>
+        <div class="value" id="fng-fetched">—</div>
+        <div class="sub" id="fng-fetched-sub"></div>
+      </div>
+      <div class="card">
+        <div class="label">Source</div>
+        <div class="value" style="font-size:15px">alternative.me</div>
+        <div class="sub">keyless · updates daily</div>
+      </div>
+    </div>
+
+    <div class="fng-gauge-wrap" id="fng-gauge-wrap">
+      <div class="fng-gauge"><div class="fng-marker" id="fng-marker"></div></div>
+      <div class="fng-scale">
+        <span>Extreme&nbsp;fear</span>
+        <span>Fear</span>
+        <span>Neutral</span>
+        <span>Greed</span>
+        <span>Extreme&nbsp;greed</span>
+      </div>
+    </div>
+
+    <div class="notice" style="margin-top:16px">
+      <strong>How it works.</strong> The Crypto Fear &amp; Greed Index distils overall market
+      sentiment into one daily number from <strong>0 (extreme fear)</strong> to
+      <strong>100 (extreme greed)</strong>, blending volatility, market momentum/volume,
+      social media, market dominance and surveys. Low readings flag fear (often oversold);
+      high readings flag greed (often overbought).
+      <br><br>
+      <strong>How it's fetched.</strong> The ticker pulls the latest reading from the keyless
+      <code>api.alternative.me/fng</code> feed — the same source the Android home-screen
+      widget uses — and caches it in <code>localStorage</code>
+      (<code>btcticker_v1_fng</code>) for 12&nbsp;hours, since the index only changes once a
+      day. This dashboard paints the cached value instantly, then refreshes from the source
+      in the background when the cache is older than 12&nbsp;hours.
     </div>
   </section>
 
@@ -457,6 +546,55 @@
       </tr>`;
     }).join('');
   }
+
+  // ── Fear & Greed index ───────────────────────────────
+  // Reads the cache the ticker writes (btcticker_v1_fng); refreshes from the
+  // same keyless alternative.me feed the ticker and widget use when stale.
+  (function renderFearGreed() {
+    const FNG_KEY = 'btcticker_v1_fng';
+    const FNG_TTL = 12 * 60 * 60 * 1000;
+    const API     = 'https://api.alternative.me/fng/?limit=1';
+    const COLORS  = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
+    const colorFor = v => COLORS[Math.min(Math.floor(v / 20), 4)];
+
+    function paint(value, classification, ts) {
+      const valEl = document.getElementById('fng-value');
+      valEl.textContent = value;
+      valEl.style.color = colorFor(value);
+      document.getElementById('fng-class').textContent = classification || '';
+      document.getElementById('fng-marker').style.left =
+        Math.max(0, Math.min(100, value)) + '%';
+      document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
+      if (ts) {
+        document.getElementById('fng-fetched').textContent = fmtAge((Date.now() - ts) / 3_600_000);
+        document.getElementById('fng-fetched-sub').textContent = fmtDateTime(ts);
+      }
+    }
+
+    // 1) paint the cached value immediately
+    let cache = null;
+    try { cache = JSON.parse(localStorage.getItem(FNG_KEY)); } catch {}
+    if (cache && !isNaN(cache.value)) paint(cache.value, cache.classification, cache.ts);
+
+    // 2) refresh from source if missing or stale
+    if (!cache || Date.now() - cache.ts >= FNG_TTL) {
+      fetch(API)
+        .then(r => r.json())
+        .then(j => {
+          const d = j.data && j.data[0];
+          if (!d) return;
+          const value = parseInt(d.value, 10);
+          if (isNaN(value)) return;
+          const rec = { value, classification: d.value_classification, ts: Date.now() };
+          localStorage.setItem(FNG_KEY, JSON.stringify(rec));
+          paint(rec.value, rec.classification, rec.ts);
+        })
+        .catch(() => {
+          if (!cache) document.getElementById('fng-class').textContent =
+            'unavailable — open the ticker to cache a reading';
+        });
+    }
+  })();
 
   // ── Price history (localStorage) ─────────────────────
   (function renderHistory() {
