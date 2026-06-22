@@ -70,6 +70,13 @@ body {
   font-weight: 400;
   line-height: 1;
 }
+/* stale F&G reading (refresh pipeline broken) — dim and underline so a frozen
+   number is visibly distinct from a live one; opacity wins over the inline colour */
+.dec-wrap .fng.stale {
+  opacity: 0.45;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+}
 .dec-wrap .chg.pos { color: var(--up); }
 .dec-wrap .chg.neg { color: var(--down); }
 .dec-wrap .dec     { color: var(--muted); font-size: 1em; line-height: 1; }

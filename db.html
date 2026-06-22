@@ -571,9 +571,20 @@
     document.getElementById('fng-marker').style.left = Math.max(0, Math.min(100, value)) + '%';
     document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
 
-    if (fng.generated) {
-      document.getElementById('fng-fetched').textContent     = fmtDateTime(fng.generated);
-      document.getElementById('fng-fetched-sub').textContent = fmtAge(hoursAgo(fng.generated));
+    // CMC publishes daily, so a reading older than 48h means the refresh
+    // pipeline is broken (e.g. an expired CMC_API_KEY secret) — flag it loudly
+    // rather than presenting a frozen number as current.
+    const stamp = fng.update_time || fng.generated;
+    if (stamp) {
+      const age = hoursAgo(stamp);
+      const sub = document.getElementById('fng-fetched-sub');
+      document.getElementById('fng-fetched').textContent = fmtDateTime(stamp);
+      sub.textContent = fmtAge(age);
+      if (age > 48) {
+        sub.textContent += ' · ⚠ stale — refresh pipeline may be down';
+        sub.style.color = '#ff6d00';
+        valEl.style.opacity = '0.45';
+      }
     }
   })();
 

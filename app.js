@@ -158,8 +158,12 @@ function fmt(n, change) {
   }
   let fngHtml = '';
   if (STATE.fearGreed) {
-    const { value, classification } = STATE.fearGreed;
-    fngHtml = `<span class="fng" style="color:${fngColor(value)}" title="Fear &amp; Greed: ${classification}">${value}</span>`;
+    const { value, classification, updateTime } = STATE.fearGreed;
+    const stale = fngStale(updateTime);
+    const title = stale
+      ? `Fear &amp; Greed: ${classification} — stale (last updated ${updateTime})`
+      : `Fear &amp; Greed: ${classification}`;
+    fngHtml = `<span class="fng${stale ? ' stale' : ''}" style="color:${fngColor(value)}" title="${title}">${value}</span>`;
   }
   return intFmt + `<span class="dec-wrap"><span class="ind">${fngHtml}${chgHtml}</span><span class="dec">.${dec}</span></span>`;
 }
@@ -199,9 +203,17 @@ setInterval(() => {
 // price decimals. Mirrors the CDC strip's file + localStorage caching.
 const FNG_STORAGE_KEY = 'btcticker_v1_fng';
 const FNG_TTL_MS      = 60 * 60 * 1000;               // re-read the data file hourly
+// CMC publishes daily; a reading older than this means the refresh pipeline is
+// broken (e.g. the CMC_API_KEY secret expired) and we're serving a stale number.
+const FNG_STALE_MS    = 2 * 24 * 60 * 60 * 1000;      // 48h
 // quintile bands matching the widget's arc: fear → greed
 const FNG_COLORS = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
 function fngColor(v) { return FNG_COLORS[Math.min(Math.floor(v / 20), 4)]; }
+// true once the reading is older than FNG_STALE_MS (unparseable time → not stale)
+function fngStale(updateTime) {
+  const t = Date.parse(updateTime);
+  return !isNaN(t) && (Date.now() - t) > FNG_STALE_MS;
+}
 
 function renderPrice() {
   if (STATE.latest) el.innerHTML = fmt(STATE.last || STATE.latest, STATE.latestChange);
@@ -212,7 +224,7 @@ function loadFearGreed() {
   try {
     const cached = JSON.parse(localStorage.getItem(FNG_STORAGE_KEY));
     if (cached && !isNaN(cached.value)) {
-      STATE.fearGreed = { value: cached.value, classification: cached.classification };
+      STATE.fearGreed = { value: cached.value, classification: cached.classification, updateTime: cached.updateTime };
       if (Date.now() - cached.ts < FNG_TTL_MS) return;   // still fresh — skip re-read
     }
   } catch {}
@@ -220,8 +232,9 @@ function loadFearGreed() {
   // Tier 2: local data file (data/fng.js sets window.LOCAL_FNG)
   const f = window.LOCAL_FNG;
   if (f && !isNaN(f.value)) {
-    STATE.fearGreed = { value: f.value, classification: f.classification };
-    try { localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value: f.value, classification: f.classification, ts: Date.now() })); } catch {}
+    const updateTime = f.update_time || f.generated || '';
+    STATE.fearGreed = { value: f.value, classification: f.classification, updateTime };
+    try { localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value: f.value, classification: f.classification, updateTime, ts: Date.now() })); } catch {}
     renderPrice();
   }
 }
