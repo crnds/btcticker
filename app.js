@@ -197,14 +197,15 @@ setInterval(() => {
 }, 500);
 
 // ── FEAR & GREED INDEX ────────────────────────────────────
-// CoinMarketCap's Fear & Greed index, refreshed once a day server-side and
+// CoinMarketCap's Fear & Greed index, refreshed every 6h server-side and
 // committed to data/fng.js (window.LOCAL_FNG) — the CMC API needs a key, so
-// it's never fetched from the client. Shown above the 24h change, beside the
-// price decimals. Mirrors the CDC strip's file + localStorage caching.
+// it's never fetched from the client. CMC's index moves intraday, hence the
+// 6h cadence rather than daily. Shown above the 24h change, beside the price
+// decimals. Mirrors the CDC strip's file + localStorage caching.
 const FNG_STORAGE_KEY = 'btcticker_v1_fng';
 const FNG_TTL_MS      = 60 * 60 * 1000;               // re-read the data file hourly
-// CMC publishes daily; a reading older than this means the refresh pipeline is
-// broken (e.g. the CMC_API_KEY secret expired) and we're serving a stale number.
+// CMC refreshes every 6h; a reading older than this means the refresh pipeline
+// is broken (e.g. the CMC_API_KEY secret expired) and we're serving a stale number.
 const FNG_STALE_MS    = 2 * 24 * 60 * 60 * 1000;      // 48h
 // quintile bands matching the widget's arc: fear → greed
 const FNG_COLORS = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];

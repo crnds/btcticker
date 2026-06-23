@@ -306,7 +306,7 @@
       <div class="card">
         <div class="label">Source</div>
         <div class="value" style="font-size:15px">CoinMarketCap</div>
-        <div class="sub">data/fng.js · updated daily</div>
+        <div class="sub">data/fng.js · updated every 6h</div>
       </div>
     </div>
 
@@ -323,14 +323,14 @@
 
     <div class="notice" style="margin-top:16px">
       <strong>How it works.</strong> CoinMarketCap's Crypto Fear &amp; Greed Index distils
-      overall market sentiment into one daily number from <strong>0 (extreme fear)</strong>
+      overall market sentiment into a single number from <strong>0 (extreme fear)</strong>
       to <strong>100 (extreme greed)</strong>, blending price momentum, volatility,
       derivatives, market composition and volume. Low readings flag fear (often oversold);
       high readings flag greed (often overbought).
       <br><br>
       <strong>How it's fetched.</strong> Because the CoinMarketCap API needs a private key,
       it's never called from the browser. A scheduled GitHub Action runs
-      <code>python3 fetch_fng.py</code> once a day (key supplied via the
+      <code>python3 fetch_fng.py</code> every 6h (key supplied via the
       <code>CMC_API_KEY</code> secret), which writes the latest reading to
       <code>data/fng.js</code> (<code>window.LOCAL_FNG</code>) and commits it — exactly like
       the CDC strip's <code>data/cdc.js</code>. The ticker and this dashboard read that file
@@ -550,8 +550,8 @@
   }
 
   // ── Fear & Greed index ───────────────────────────────
-  // Reads window.LOCAL_FNG from data/fng.js — generated daily server-side from
-  // the CoinMarketCap API (the key never reaches the browser).
+  // Reads window.LOCAL_FNG from data/fng.js — refreshed every 6h server-side
+  // from the CoinMarketCap API (the key never reaches the browser).
   (function renderFearGreed() {
     const COLORS   = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
     const colorFor = v => COLORS[Math.min(Math.floor(v / 20), 4)];
@@ -571,7 +571,7 @@
     document.getElementById('fng-marker').style.left = Math.max(0, Math.min(100, value)) + '%';
     document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
 
-    // CMC publishes daily, so a reading older than 48h means the refresh
+    // CMC refreshes every 6h, so a reading older than 48h means the refresh
     // pipeline is broken (e.g. an expired CMC_API_KEY secret) — flag it loudly
     // rather than presenting a frozen number as current.
     const stamp = fng.update_time || fng.generated;
