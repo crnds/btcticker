@@ -24,7 +24,7 @@
       --stale-text: #fecdd3;
       --stale-border: rgba(244,63,94,0.35);
       --line: rgba(255,255,255,0.1);
-      --radius: 8px;
+      --radius: 7px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { height: 100%; }
@@ -32,7 +32,7 @@
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      font-size: 14px;
+      font-size: 12.5px;
       display: flex;
       flex-direction: column;
       height: 100vh;
@@ -44,39 +44,69 @@
       flex: 0 0 auto;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
-      height: 52px;
-      padding: 0 22px;
+      height: 36px;
+      padding: 0 12px;
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 10px;
     }
     header .back {
       color: var(--text2);
       text-decoration: none;
-      font-size: 18px;
+      font-size: 16px;
       line-height: 1;
-      padding: 4px 8px;
-      border-radius: 6px;
+      padding: 2px 6px;
+      border-radius: 5px;
     }
     header .back:hover { color: var(--text); background: var(--surface-alt); }
-    header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
-    header h1 .sep { color: var(--muted); margin: 0 4px; font-weight: 400; }
+    header h1 { font-size: 13px; font-weight: 600; }
+    header h1 .sep { color: var(--muted); margin: 0 3px; font-weight: 400; }
     header h1 .muted2 { color: var(--text2); font-weight: 400; }
-    .header-right {
-      margin-left: auto;
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    /* live BTC price (Binance REST, 30s poll) */
+    .live-price {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 7px;
+      margin-left: 4px;
+      padding: 3px 11px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+    }
+    .live-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--bull);
+      flex: 0 0 auto;
+      animation: live-pulse 2s ease-out infinite;
+    }
+    .live-dot.stale { background: var(--muted); animation: none; }
+    .live-px {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      font-variant-numeric: tabular-nums;
+      transition: color 0.5s ease;
+    }
+    .live-chg { font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .live-chg.bull { color: var(--bull); }
+    .live-chg.bear { color: var(--bear); }
+    .live-chg.muted { color: var(--muted); }
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(0,230,118,0.5); }
+      70%  { box-shadow: 0 0 0 6px rgba(0,230,118,0); }
+      100% { box-shadow: 0 0 0 0 rgba(0,230,118,0); }
     }
 
-    /* ── Freshness status pill ────────────────────────── */
     #freshness-notice {
-      font-size: 12.5px;
+      font-size: 11.5px;
       color: var(--text2);
       background: var(--surface-alt);
       border: 1px solid var(--border);
       border-radius: 999px;
-      padding: 6px 14px;
+      padding: 3px 11px;
       white-space: nowrap;
       display: inline-flex;
       align-items: center;
@@ -84,7 +114,7 @@
     }
     #freshness-notice::before {
       content: '';
-      width: 7px; height: 7px; border-radius: 50%;
+      width: 6px; height: 6px; border-radius: 50%;
       background: var(--bull); flex: 0 0 auto;
     }
     #freshness-notice.warn  { border-color: var(--warn-border);  color: var(--warn-text); }
@@ -95,39 +125,24 @@
     #freshness-notice code {
       font-family: ui-monospace, monospace;
       background: rgba(0,0,0,0.3);
-      padding: 1px 5px; border-radius: 4px;
-      font-size: 11px;
+      padding: 0 4px; border-radius: 3px;
+      font-size: 10.5px;
     }
 
-    /* ── Layout shell ─────────────────────────────────── */
+    /* ── Layout shell: two columns ────────────────────── */
     main {
       flex: 1 1 auto;
       min-height: 0;
       display: grid;
-      grid-template-rows: auto 1fr;
-      gap: 14px;
-      padding: 16px 22px 18px;
+      grid-template-columns: 1.5fr 1fr;
+      gap: 8px;
+      padding: 8px;
     }
-
-    /* ── KPI strip ────────────────────────────────────── */
-    .kpi-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 14px;
-    }
-
-    /* ── Panels grid ──────────────────────────────────── */
-    .panels {
-      min-height: 0;
-      display: grid;
-      grid-template-columns: 1.4fr 1.15fr 0.95fr;
-      gap: 14px;
-    }
-    .col {
+    .col-left, .col-right {
       min-height: 0;
       display: flex;
       flex-direction: column;
-      gap: 14px;
+      gap: 8px;
     }
 
     /* ── Cards & panels ───────────────────────────────── */
@@ -135,37 +150,35 @@
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      overflow: visible;
     }
-    .card { padding: 14px 16px; }
     .panel { display: flex; flex-direction: column; min-height: 0; }
     .panel-head {
       display: flex;
       align-items: center;
-      gap: 7px;
-      padding: 12px 16px 10px;
+      gap: 6px;
+      padding: 7px 11px 5px;
+      flex: 0 0 auto;
     }
-    .panel-body { padding: 0 16px 14px; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+    .panel-body { padding: 0 11px 9px; flex: 0 0 auto; height: auto; display: flex; flex-direction: column; }
 
     .label {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.07em;
+      letter-spacing: 0.06em;
       color: var(--text2);
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
     }
-    .card .label { margin-bottom: 8px; }
     .value {
-      font-size: 26px;
+      font-size: 19px;
       font-weight: 600;
       letter-spacing: -0.01em;
       font-variant-numeric: tabular-nums;
       line-height: 1.1;
     }
-    .sub { font-size: 12px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
+    .sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
 
     .bull  { color: var(--bull); }
     .bear  { color: var(--bear); }
@@ -173,15 +186,29 @@
 
     .dot {
       display: inline-block;
-      width: 8px; height: 8px;
+      width: 7px; height: 7px;
       border-radius: 50%;
       vertical-align: middle;
-      margin-right: 6px;
+      margin-right: 5px;
     }
-    .dot.bull  { background: var(--bull); }
-    .dot.bear  { background: var(--bear); }
-    .dot.warn  { background: var(--warn); }
-    .dot.muted { background: var(--muted); }
+    .dot.bull { background: var(--bull); }
+    .dot.bear { background: var(--bear); }
+
+    /* ── KPI strip ────────────────────────────────────── */
+    .kpi-row {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 11px;
+    }
+    .kpi .label { margin-bottom: 4px; }
+    .kpi .sub { margin-top: 1px; }
 
     /* ── Info tooltip ─────────────────────────────────── */
     .info {
@@ -189,11 +216,11 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 15px; height: 15px;
+      width: 13px; height: 13px;
       border-radius: 50%;
       border: 1px solid var(--border);
       color: var(--muted);
-      font-size: 10px;
+      font-size: 9px;
       font-weight: 700;
       font-style: normal;
       font-family: Georgia, 'Times New Roman', serif;
@@ -210,19 +237,19 @@
     .info::after {
       content: attr(data-tip);
       position: absolute;
-      top: calc(100% + 9px);
+      top: calc(100% + 8px);
       left: -4px;
       width: max-content;
-      max-width: 300px;
+      max-width: 260px;
       background: var(--tip-bg);
       color: var(--text);
       border: 1px solid var(--border);
-      border-radius: 7px;
-      padding: 9px 11px;
-      font-size: 12px;
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-size: 11.5px;
       font-weight: 400;
       font-family: system-ui, -apple-system, sans-serif;
-      line-height: 1.55;
+      line-height: 1.5;
       text-align: left;
       white-space: normal;
       box-shadow: 0 10px 30px rgba(0,0,0,0.55);
@@ -235,8 +262,8 @@
     .info::before {
       content: '';
       position: absolute;
-      top: calc(100% + 3px);
-      left: 4px;
+      top: calc(100% + 2px);
+      left: 3px;
       border: 5px solid transparent;
       border-bottom-color: var(--tip-bg);
       opacity: 0;
@@ -245,31 +272,34 @@
     }
     .info:hover::after, .info:focus-visible::after,
     .info:hover::before, .info:focus-visible::before {
-      opacity: 1;
-      transform: translateY(0);
+      opacity: 1; transform: translateY(0);
     }
-    /* right-anchored variant for triggers near the right edge */
-    .info.tl::after { left: auto; right: -4px; }
-    .info.tl::before { left: auto; right: 4px; }
+    .info.tl::after  { left: auto; right: -4px; }
+    .info.tl::before { left: auto; right: 3px; }
+    .info.tu::after  { top: auto; bottom: calc(100% + 8px); transform: translateY(3px); }
+    .info.tu::before { top: auto; bottom: calc(100% + 2px); border-bottom-color: transparent; border-top-color: var(--tip-bg); }
+    .info.tu:hover::after, .info.tu:focus-visible::after { transform: translateY(0); }
 
-    /* ── CDC 30-day strip ─────────────────────────────── */
+    /* ── CDC 30-day strip (flex-fill) ─────────────────── */
     .cdc-chart-inner {
       position: relative;
       display: flex;
-      align-items: flex-start;
-      gap: 3px;
-      height: 150px;
-      flex: 1 1 auto;
+      align-items: stretch;
+      gap: 2px;
+      height: 200px;
     }
     .cdc-chart-inner::after {
       content: '';
       position: absolute;
-      left: 0; right: 0; top: 75px;
+      left: 0; right: 0; top: 50%;
       height: 1px;
       background: var(--line);
       pointer-events: none;
     }
-    .db-slot { flex: 1; height: 150px; display: flex; flex-direction: column; }
+    .db-slot { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .db-half { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .db-half.top { justify-content: flex-end; }
+    .db-half.bot { justify-content: flex-start; }
     .db-block { width: 100%; border-radius: 2px; }
     .db-block.bull  { background: var(--bull); }
     .db-block.bear  { background: var(--bear); }
@@ -277,13 +307,15 @@
     .cdc-labels {
       display: flex;
       justify-content: space-between;
-      margin-top: 8px;
-      font-size: 11px;
+      margin-top: 6px;
+      font-size: 10px;
       color: var(--muted);
+      flex: 0 0 auto;
     }
 
-    /* breakdown mini-grid under the strip */
+    /* breakdown mini-grid */
     .mini-grid {
+      flex: 0 0 auto;
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 1px;
@@ -291,32 +323,35 @@
       border: 1px solid var(--border);
       border-radius: 6px;
       overflow: hidden;
-      margin-top: 14px;
+      margin-top: 8px;
     }
-    .mini {
-      background: var(--surface);
-      padding: 10px 12px;
-    }
-    .mini .mlabel { font-size: 10.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
-    .mini .mval { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
-    .mini .msub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+    .mini { background: var(--surface); padding: 6px 9px; }
+    .mini .mlabel { font-size: 9.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+    .mini .mval { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 2px; line-height: 1.1; }
+    .mini .msub { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
 
-    /* ── Fear & Greed gauge ───────────────────────────── */
-    .fng-top { display: flex; align-items: baseline; gap: 10px; }
-    #fng-value { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
-    #fng-class { font-size: 15px; font-weight: 600; color: var(--text2); }
-    .fng-gauge-wrap { margin-top: 16px; visibility: hidden; }
+    /* ── left-bottom: F&G + price side by side ────────── */
+    .left-bottom {
+      flex: 0 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .fng-top { display: flex; align-items: baseline; gap: 8px; }
+    #fng-value { font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    #fng-class { font-size: 13px; font-weight: 600; color: var(--text2); }
+    .fng-gauge-wrap { margin-top: 10px; visibility: hidden; }
     .fng-gauge {
       position: relative;
-      height: 10px;
-      border-radius: 5px;
+      height: 8px;
+      border-radius: 4px;
       background: linear-gradient(to right,
         #ff1744 0%, #ff6d00 25%, #ffeb3b 50%, #69f0ae 75%, #00e676 100%);
     }
     .fng-marker {
       position: absolute;
-      top: -4px; left: 0;
-      width: 4px; height: 18px;
+      top: -3px; left: 0;
+      width: 3px; height: 14px;
       border-radius: 2px;
       background: #fff;
       transform: translateX(-50%);
@@ -326,12 +361,18 @@
     .fng-scale {
       display: flex;
       justify-content: space-between;
-      margin-top: 10px;
-      font-size: 10.5px;
+      margin-top: 6px;
+      font-size: 9px;
       color: var(--muted);
     }
-    .fng-foot { margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--muted); }
+    .fng-foot { margin-top: auto; padding-top: 8px; font-size: 10.5px; color: var(--muted); }
     .fng-foot #fng-fetched { color: var(--text2); }
+
+    /* price 2x2 */
+    .price-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+    .price-cell .plabel { font-size: 9.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.04em; }
+    .price-cell .pval { font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1.15; margin-top: 1px; }
+    .price-cell .psub { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
 
     /* ── Block detail table ───────────────────────────── */
     .table-scroll {
@@ -343,18 +384,19 @@
     table { width: 100%; border-collapse: collapse; }
     th, td {
       text-align: left;
-      padding: 8px 16px;
+      padding: 3px 11px;
       border-bottom: 1px solid var(--border);
-      font-size: 13px;
+      font-size: 11.5px;
       font-variant-numeric: tabular-nums;
+      white-space: nowrap;
     }
     th {
       position: sticky;
       top: 0;
-      font-size: 10.5px;
+      font-size: 9.5px;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       color: var(--text2);
       background: var(--surface-alt);
       z-index: 1;
@@ -362,15 +404,7 @@
     tbody tr:last-child td { border-bottom: none; }
     tbody tr:hover td { background: rgba(255,255,255,0.02); }
 
-    /* price 2x2 grid */
-    .price-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    /* scrollbar polish */
-    .table-scroll::-webkit-scrollbar { width: 8px; }
+    .table-scroll::-webkit-scrollbar { width: 7px; }
     .table-scroll::-webkit-scrollbar-thumb { background: var(--surface-alt); border-radius: 4px; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -378,15 +412,13 @@
     }
 
     /* Below the design target, let the page scroll instead of squashing */
-    @media (max-width: 1400px), (max-height: 820px) {
+    @media (max-width: 900px), (max-height: 560px) {
       body { height: auto; overflow: auto; }
-      main { grid-template-rows: none; }
-      .panels { grid-template-columns: 1fr; }
-      .table-scroll { max-height: 420px; }
+      main { grid-template-columns: 1fr; }
+      .cdc-chart-inner { min-height: 150px; }
+      .table-scroll { max-height: 360px; }
     }
-    @media (max-width: 760px) {
-      .kpi-row { grid-template-columns: 1fr 1fr; }
-    }
+    @media (max-width: 560px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
   </style>
 </head>
 <body>
@@ -394,8 +426,15 @@
 <header>
   <a href="index.html" class="back" aria-label="Back to ticker">←</a>
   <h1>BTC Ticker <span class="sep">·</span><span class="muted2">Dashboard</span></h1>
+  <div class="live-price">
+    <span class="live-dot" id="live-dot"></span>
+    <span class="live-px" id="live-px">—</span>
+    <span class="live-chg" id="live-chg"></span>
+    <span class="info" tabindex="0" role="img" aria-label="About the live price"
+      data-tip="Live BTC/USDT from Binance, refreshed every 30s. The number flashes green/red on each tick; the change is over the last 24h. Dot dims grey if Binance is unreachable.">i</span>
+  </div>
   <div class="header-right">
-    <span id="freshness-notice" class="notice">Checking data freshness…</span>
+    <span id="freshness-notice" class="notice">Checking…</span>
     <span class="info tl" tabindex="0" role="img" aria-label="Maintenance help"
       data-tip="Refresh data manually from the project directory: python3 fetch_cdc.py (CDC blocks) and python3 fetch_fng.py (Fear &amp; Greed). The bundled data files are the cold-start fallback; localStorage caches them for 1 hour.">i</span>
   </div>
@@ -403,175 +442,163 @@
 
 <main>
 
-  <!-- ── KPI strip ──────────────────────────────────── -->
-  <div class="kpi-row">
-    <div class="card">
-      <div class="label">Current signal
-        <span class="info" tabindex="0" role="img" aria-label="What is the current signal"
-          data-tip="Latest CDC signal from today's still-forming daily candle. Bullish when EMA-12 sits above EMA-26, bearish when below.">i</span>
-      </div>
-      <div class="value" id="cdc-signal">—</div>
-    </div>
-    <div class="card">
-      <div class="label">EMA diff (today)
-        <span class="info" tabindex="0" role="img" aria-label="What is EMA diff"
-          data-tip="|EMA-12 − EMA-26| for today — how far apart the fast and slow moving averages are. Wider separation means a stronger trend.">i</span>
-      </div>
-      <div class="value" id="cdc-diff">—</div>
-    </div>
-    <div class="card">
-      <div class="label">Current streak
-        <span class="info" tabindex="0" role="img" aria-label="What is the streak"
-          data-tip="Number of consecutive days the signal has held the same direction.">i</span>
-      </div>
-      <div class="value" id="cdc-streak">—</div>
-      <div class="sub" id="cdc-streak-sub"></div>
-    </div>
-    <div class="card">
-      <div class="label">Data generated
-        <span class="info tl" tabindex="0" role="img" aria-label="When data was generated"
-          data-tip="When data/cdc.js was last produced by fetch_cdc.py. Cached in localStorage for 1 hour before the file is re-read.">i</span>
-      </div>
-      <div class="value" id="cdc-generated" style="font-size:18px">—</div>
-      <div class="sub" id="cdc-generated-sub"></div>
-    </div>
-  </div>
+  <!-- ── Left column ────────────────────────────────── -->
+  <div class="col-left">
 
-  <!-- ── Panels ─────────────────────────────────────── -->
-  <div class="panels">
-
-    <!-- Column A: CDC strip + breakdown -->
-    <div class="col">
-      <section class="panel" style="flex:1 1 auto">
-        <div class="panel-head">
-          <span class="label">30-day CDC strip</span>
-          <span class="info" tabindex="0" role="img" aria-label="About the CDC strip"
-            data-tip="One block per day over roughly 30 days. Green = bullish, red = bearish; bar height scales with EMA separation. The faded block is today's incomplete candle.">i</span>
+    <!-- KPI strip -->
+    <div class="kpi-row">
+      <div class="kpi">
+        <div class="label">Signal
+          <span class="info" tabindex="0" role="img" aria-label="What is the current signal"
+            data-tip="Latest CDC signal from today's still-forming daily candle. Bullish when EMA-12 sits above EMA-26, bearish when below.">i</span>
         </div>
-        <div class="panel-body">
-          <div class="cdc-chart-inner" id="cdc-chart"></div>
-          <div class="cdc-labels">
-            <span id="cdc-label-start">—</span>
-            <span id="cdc-label-end">today</span>
+        <div class="value" id="cdc-signal">—</div>
+        <div class="sub" id="cdc-streak-sub"></div>
+      </div>
+      <div class="kpi">
+        <div class="label">EMA diff
+          <span class="info" tabindex="0" role="img" aria-label="What is EMA diff"
+            data-tip="|EMA-12 − EMA-26| for today — how far apart the fast and slow moving averages are. Wider separation means a stronger trend.">i</span>
+        </div>
+        <div class="value" id="cdc-diff">—</div>
+        <div class="sub">today</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Streak
+          <span class="info" tabindex="0" role="img" aria-label="What is the streak"
+            data-tip="Number of consecutive days the signal has held the same direction.">i</span>
+        </div>
+        <div class="value" id="cdc-streak">—</div>
+        <div class="sub">consecutive</div>
+      </div>
+      <div class="kpi">
+        <div class="label">Generated
+          <span class="info tl" tabindex="0" role="img" aria-label="When data was generated"
+            data-tip="When data/cdc.js was last produced by fetch_cdc.py. Cached in localStorage for 1 hour before the file is re-read.">i</span>
+        </div>
+        <div class="value" id="cdc-generated" style="font-size:14px">—</div>
+        <div class="sub" id="cdc-generated-sub"></div>
+      </div>
+    </div>
+
+    <!-- CDC strip (hugs its content) -->
+    <section class="panel" style="flex:0 0 auto">
+      <div class="panel-head">
+        <span class="label">30-day CDC strip</span>
+        <span class="info" tabindex="0" role="img" aria-label="About the CDC strip"
+          data-tip="One block per day over roughly 30 days. Green = bullish, red = bearish; bar height scales with EMA separation. The faded block is today's incomplete candle.">i</span>
+      </div>
+      <div class="panel-body">
+        <div class="cdc-chart-inner" id="cdc-chart"></div>
+        <div class="cdc-labels">
+          <span id="cdc-label-start">—</span>
+          <span id="cdc-label-end">today</span>
+        </div>
+        <div class="mini-grid">
+          <div class="mini">
+            <div class="mlabel">Bull days</div>
+            <div class="mval bull" id="bull-count">—</div>
+            <div class="msub" id="bull-pct"></div>
           </div>
-          <div class="mini-grid">
-            <div class="mini">
-              <div class="mlabel">Bull days</div>
-              <div class="mval bull" id="bull-count">—</div>
-              <div class="msub" id="bull-pct"></div>
-            </div>
-            <div class="mini">
-              <div class="mlabel">Bear days</div>
-              <div class="mval bear" id="bear-count">—</div>
-              <div class="msub" id="bear-pct"></div>
-            </div>
-            <div class="mini">
-              <div class="mlabel">Avg diff · bull</div>
-              <div class="mval" id="bull-avg-diff">—</div>
-              <div class="msub">separation</div>
-            </div>
-            <div class="mini">
-              <div class="mlabel">Avg diff · bear</div>
-              <div class="mval" id="bear-avg-diff">—</div>
-              <div class="msub">separation</div>
-            </div>
+          <div class="mini">
+            <div class="mlabel">Bear days</div>
+            <div class="mval bear" id="bear-count">—</div>
+            <div class="msub" id="bear-pct"></div>
+          </div>
+          <div class="mini">
+            <div class="mlabel">Avg diff bull</div>
+            <div class="mval" id="bull-avg-diff">—</div>
+            <div class="msub">separation</div>
+          </div>
+          <div class="mini">
+            <div class="mlabel">Avg diff bear</div>
+            <div class="mval" id="bear-avg-diff">—</div>
+            <div class="msub">separation</div>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
 
-    <!-- Column B: block detail table -->
-    <div class="col">
-      <section class="panel" style="flex:1 1 auto">
-        <div class="panel-head">
-          <span class="label">Block detail — newest first</span>
-          <span class="info" tabindex="0" role="img" aria-label="About the block table"
-            data-tip="Every CDC block, newest first — date, signal direction, and EMA separation in USD. The top row is today's incomplete candle.">i</span>
-        </div>
-        <div class="table-scroll">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Date</th>
-                <th>Signal</th>
-                <th>EMA Diff</th>
-                <th>Note</th>
-              </tr>
-            </thead>
-            <tbody id="block-table">
-              <tr><td colspan="5" style="color:var(--muted);padding:20px 16px;">No CDC data loaded.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-
-    <!-- Column C: Fear & Greed + price history -->
-    <div class="col">
+    <!-- F&G + price history -->
+    <div class="left-bottom">
       <section class="panel">
         <div class="panel-head">
           <span class="label">Fear &amp; Greed
-            <span class="info tl" tabindex="0" role="img" aria-label="About Fear and Greed"
-              data-tip="CoinMarketCap's Crypto Fear &amp; Greed Index — a single number from 0 (extreme fear) to 100 (extreme greed) blending price momentum, volatility, derivatives, market composition and volume. Low readings flag fear (often oversold); high readings flag greed (often overbought). Fetched server-side every 6h into data/fng.js — the API key never reaches the browser.">i</span>
+            <span class="info tu" tabindex="0" role="img" aria-label="About Fear and Greed"
+              data-tip="CoinMarketCap's Crypto Fear &amp; Greed Index — a single number from 0 (extreme fear) to 100 (extreme greed) blending price momentum, volatility, derivatives, market composition and volume. Low = fear (often oversold); high = greed (often overbought). Fetched server-side every 6h into data/fng.js — the API key never reaches the browser.">i</span>
           </span>
         </div>
         <div class="panel-body">
           <div class="fng-top">
             <span class="value" id="fng-value">—</span>
-            <span id="fng-class">waiting for data…</span>
+            <span id="fng-class">waiting…</span>
           </div>
           <div class="fng-gauge-wrap" id="fng-gauge-wrap">
             <div class="fng-gauge"><div class="fng-marker" id="fng-marker"></div></div>
             <div class="fng-scale">
-              <span>Extreme&nbsp;fear</span>
-              <span>Fear</span>
-              <span>Neutral</span>
-              <span>Greed</span>
-              <span>Extreme&nbsp;greed</span>
+              <span>Ext.&nbsp;fear</span><span>Fear</span><span>Neutral</span><span>Greed</span><span>Ext.&nbsp;greed</span>
             </div>
           </div>
-          <div class="fng-foot">
-            <span id="fng-fetched">—</span> · <span id="fng-fetched-sub"></span>
-          </div>
+          <div class="fng-foot"><span id="fng-fetched">—</span> · <span id="fng-fetched-sub"></span></div>
         </div>
       </section>
 
-      <section class="panel" style="flex:1 1 auto">
+      <section class="panel">
         <div class="panel-head">
-          <span class="label">Price history — 24h
-            <span class="info tl" tabindex="0" role="img" aria-label="About price history"
+          <span class="label">Price — 24h
+            <span class="info tu tl" tabindex="0" role="img" aria-label="About price history"
               data-tip="BTC price snapshots the ticker saves to localStorage (btcticker_v1_history), one per minute, over the last 24h. Open the ticker first to populate it.">i</span>
           </span>
         </div>
         <div class="panel-body">
           <div class="price-grid">
-            <div>
-              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Latest price</div>
-              <div class="value" style="font-size:20px" id="hist-latest">—</div>
-              <div class="sub" id="hist-latest-sub"></div>
+            <div class="price-cell">
+              <div class="plabel">Latest</div>
+              <div class="pval" id="hist-latest">—</div>
+              <div class="psub" id="hist-latest-sub"></div>
             </div>
-            <div>
-              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Entries stored</div>
-              <div class="value" style="font-size:20px" id="hist-count">—</div>
-              <div class="sub">snapshots</div>
+            <div class="price-cell">
+              <div class="plabel">Entries</div>
+              <div class="pval" id="hist-count">—</div>
+              <div class="psub">snapshots</div>
             </div>
-            <div>
-              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">24h high</div>
-              <div class="value bull" style="font-size:20px" id="hist-high">—</div>
-              <div class="sub" id="hist-high-sub"></div>
+            <div class="price-cell">
+              <div class="plabel">24h high</div>
+              <div class="pval bull" id="hist-high">—</div>
+              <div class="psub" id="hist-high-sub"></div>
             </div>
-            <div>
-              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">24h low</div>
-              <div class="value bear" style="font-size:20px" id="hist-low">—</div>
-              <div class="sub" id="hist-low-sub"></div>
+            <div class="price-cell">
+              <div class="plabel">24h low</div>
+              <div class="pval bear" id="hist-low">—</div>
+              <div class="psub" id="hist-low-sub"></div>
             </div>
           </div>
         </div>
       </section>
     </div>
-
   </div>
+
+  <!-- ── Right column: block table ──────────────────── -->
+  <div class="col-right">
+    <section class="panel" style="flex:1 1 auto">
+      <div class="panel-head">
+        <span class="label">Block detail — newest first</span>
+        <span class="info tl" tabindex="0" role="img" aria-label="About the block table"
+          data-tip="Every CDC block, newest first — date, signal direction, and EMA separation in USD. The top row is today's incomplete candle.">i</span>
+      </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Date</th><th>Signal</th><th>EMA Diff</th></tr>
+          </thead>
+          <tbody id="block-table">
+            <tr><td colspan="4" style="color:var(--muted);padding:16px 11px;">No CDC data loaded.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
 </main>
 
 <script src="data/cdc.js"></script>
@@ -607,7 +634,7 @@
 
   if (!cdc || !cdc.blocks || !cdc.blocks.length) {
     noticeEl.className = 'notice stale';
-    noticeEl.innerHTML = '<strong>data/cdc.js not generated yet.</strong> Run <code>python3 fetch_cdc.py</code> to populate it.';
+    noticeEl.innerHTML = '<strong>data/cdc.js missing.</strong> Run <code>python3 fetch_cdc.py</code>.';
   } else {
     const age    = hoursAgo(cdc.generated);
     const blocks = cdc.blocks;
@@ -619,12 +646,12 @@
     // Freshness notice
     if (age > 48) {
       noticeEl.className = 'notice stale';
-      noticeEl.innerHTML = `<strong>CDC data is ${Math.floor(age / 24)} days old.</strong> Run <code>python3 fetch_cdc.py</code> to refresh.`;
+      noticeEl.innerHTML = `<strong>CDC ${Math.floor(age / 24)}d old.</strong> Run <code>python3 fetch_cdc.py</code>.`;
     } else if (age > 24) {
       noticeEl.className = 'notice warn';
-      noticeEl.innerHTML = `<strong>CDC data is ${fmtAge(age)}.</strong> Consider re-running <code>python3 fetch_cdc.py</code>.`;
+      noticeEl.innerHTML = `<strong>CDC ${fmtAge(age)}.</strong> Re-run <code>fetch_cdc.py</code>.`;
     } else {
-      noticeEl.innerHTML = `CDC data generated <strong>${fmtAge(age)}</strong>`;
+      noticeEl.innerHTML = `CDC generated <strong>${fmtAge(age)}</strong>`;
     }
 
     // Generated card
@@ -651,19 +678,20 @@
     const streakEl = document.getElementById('cdc-streak');
     streakEl.textContent = streak + (streak === 1 ? ' day' : ' days');
     streakEl.className = `value ${lastSignal ? 'bull' : 'bear'}`;
-    document.getElementById('cdc-streak-sub').textContent =
-      `consecutive ${lastSignal ? 'bullish' : 'bearish'}`;
+    document.getElementById('cdc-streak-sub').textContent = lastSignal ? 'bullish' : 'bearish';
 
-    // CDC chart (75px per side = 150px total)
-    const MAX_H = 75, MIN_H = 4;
+    // CDC chart — bars fill the panel height (percentage of each half)
     const diffs = blocks.map(b => b.diff);
     const minD  = Math.min(...diffs);
     const maxD  = Math.max(...diffs);
     const range = maxD - minD || 1;
     document.getElementById('cdc-chart').innerHTML = blocks.map(b => {
-      const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
-      const mt = b.bull ? (MAX_H - h) : MAX_H;
-      return `<div class="db-slot"><div class="db-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
+      const frac  = 8 + ((b.diff - minD) / range) * 92;   // 8–100 % of the half
+      const today = b.today ? ' today' : '';
+      const bar   = `<div class="db-block ${b.bull ? 'bull' : 'bear'}${today}" style="height:${frac}%"></div>`;
+      return b.bull
+        ? `<div class="db-slot"><div class="db-half top">${bar}</div><div class="db-half bot"></div></div>`
+        : `<div class="db-slot"><div class="db-half top"></div><div class="db-half bot">${bar}</div></div>`;
     }).join('');
 
     // Date range labels
@@ -687,14 +715,13 @@
     document.getElementById('block-table').innerHTML = [...blocks].reverse().map((b, i) => {
       const dayTs   = genTs - i * 86_400_000;
       const dayLabel = i === 0 && fresh
-        ? `Today <span style="color:var(--muted);font-size:11px">(incomplete)</span>`
+        ? `Today <span style="color:var(--muted);font-size:10px">(incomplete)</span>`
         : fmtDate(dayTs);
       return `<tr>
         <td class="muted">${blocks.length - i}</td>
         <td>${dayLabel}</td>
         <td><span class="dot ${b.bull ? 'bull' : 'bear'}"></span><span class="${b.bull ? 'bull' : 'bear'}">${b.bull ? 'Bullish' : 'Bearish'}</span></td>
         <td>$${b.diff.toLocaleString(undefined, { maximumFractionDigits: 0 })}</td>
-        <td style="color:var(--muted);font-size:12px">${i === 0 && fresh ? 'today' : ''}</td>
       </tr>`;
     }).join('');
   }
@@ -708,8 +735,7 @@
     const fng = window.LOCAL_FNG;
 
     if (!fng || isNaN(fng.value)) {
-      document.getElementById('fng-class').textContent =
-        'data/fng.js not generated yet — run python3 fetch_fng.py';
+      document.getElementById('fng-class').textContent = 'data/fng.js missing';
       return;
     }
 
@@ -731,7 +757,7 @@
       document.getElementById('fng-fetched').textContent = fmtDateTime(stamp);
       sub.textContent = fmtAge(age);
       if (age > 48) {
-        sub.textContent += ' · ⚠ stale — refresh pipeline may be down';
+        sub.textContent += ' · ⚠ stale';
         sub.style.color = '#ff6d00';
         valEl.style.opacity = '0.45';
       }
@@ -766,8 +792,54 @@
       document.getElementById('hist-low').textContent      = fmtUSD(low);
       document.getElementById('hist-low-sub').textContent  = fmtDateTime(lowEntry.ts);
     } catch {
-      document.getElementById('hist-latest-sub').textContent = 'No history — open the ticker first.';
+      document.getElementById('hist-latest-sub').textContent = 'open ticker first';
     }
+  })();
+
+  // ── Live price (Binance REST, 30s poll) ──────────────
+  // The ticker uses a WebSocket; here a lightweight 30s REST poll keeps the
+  // dashboard header live without holding a socket open.
+  (function livePrice() {
+    const PX_URL  = 'https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT';
+    const POLL_MS = 30_000;
+    const pxEl  = document.getElementById('live-px');
+    const chgEl = document.getElementById('live-chg');
+    const dotEl = document.getElementById('live-dot');
+    let prev = null;
+
+    async function tick() {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8_000);
+      try {
+        const r = await fetch(PX_URL, { signal: ctrl.signal });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        const price = parseFloat(d.lastPrice);
+        const chg   = parseFloat(d.priceChangePercent);
+
+        pxEl.textContent  = '$' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        chgEl.textContent = (chg >= 0 ? '+' : '') + chg.toFixed(2) + '%';
+        chgEl.className   = 'live-chg ' + (chg >= 0 ? 'bull' : 'bear');
+
+        // flash the price green/red in the tick direction, then settle
+        if (prev !== null && price !== prev) {
+          pxEl.style.color = price > prev ? 'var(--bull)' : 'var(--bear)';
+          setTimeout(() => { pxEl.style.color = ''; }, 600);
+        }
+        prev = price;
+        dotEl.classList.remove('stale');
+        dotEl.title = 'Live · ' + fmtDateTime(Date.now());
+      } catch {
+        dotEl.classList.add('stale');
+        chgEl.textContent = 'offline';
+        chgEl.className   = 'live-chg muted';
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+
+    tick();
+    setInterval(tick, POLL_MS);
   })();
 </script>
 </body>
