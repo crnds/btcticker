@@ -10,6 +10,7 @@
       --bg: #08090d;
       --surface: #0f1117;
       --surface-alt: #161b27;
+      --tip-bg: #1b2334;
       --border: rgba(255,255,255,0.07);
       --text: #f1f5f9;
       --text2: #94a3b8;
@@ -26,63 +27,145 @@
       --radius: 8px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
     body {
       background: var(--bg);
       color: var(--text);
       font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       font-size: 14px;
-      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
 
+    /* ── Header ───────────────────────────────────────── */
     header {
+      flex: 0 0 auto;
       background: var(--surface);
       border-bottom: 1px solid var(--border);
       height: 52px;
-      padding: 0 24px;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    header .back {
+      color: var(--text2);
+      text-decoration: none;
+      font-size: 18px;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 6px;
+    }
+    header .back:hover { color: var(--text); background: var(--surface-alt); }
+    header h1 { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+    header h1 .sep { color: var(--muted); margin: 0 4px; font-weight: 400; }
+    header h1 .muted2 { color: var(--text2); font-weight: 400; }
+    .header-right {
+      margin-left: auto;
       display: flex;
       align-items: center;
       gap: 12px;
     }
-    header h1 { font-size: 15px; font-weight: 500; }
-    header .sep { color: var(--muted); }
-    header a { color: var(--text2); text-decoration: none; font-size: 13px; }
-    header a:hover { color: var(--text); }
 
-    main {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 28px 24px;
-    }
-
-    .section + .section { margin-top: 36px; }
-    .section-title {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
+    /* ── Freshness status pill ────────────────────────── */
+    #freshness-notice {
+      font-size: 12.5px;
       color: var(--text2);
-      margin-bottom: 12px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 6px 14px;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    #freshness-notice::before {
+      content: '';
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--bull); flex: 0 0 auto;
+    }
+    #freshness-notice.warn  { border-color: var(--warn-border);  color: var(--warn-text); }
+    #freshness-notice.warn::before  { background: var(--warn); }
+    #freshness-notice.stale { border-color: var(--stale-border); color: var(--stale-text); }
+    #freshness-notice.stale::before { background: var(--bear); }
+    #freshness-notice strong { color: var(--text); font-weight: 600; }
+    #freshness-notice code {
+      font-family: ui-monospace, monospace;
+      background: rgba(0,0,0,0.3);
+      padding: 1px 5px; border-radius: 4px;
+      font-size: 11px;
     }
 
-    .grid {
+    /* ── Layout shell ─────────────────────────────────── */
+    main {
+      flex: 1 1 auto;
+      min-height: 0;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 10px;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
+      padding: 16px 22px 18px;
     }
-    .card {
+
+    /* ── KPI strip ────────────────────────────────────── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+    }
+
+    /* ── Panels grid ──────────────────────────────────── */
+    .panels {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1.4fr 1.15fr 0.95fr;
+      gap: 14px;
+    }
+    .col {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── Cards & panels ───────────────────────────────── */
+    .card, .panel {
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 16px 18px;
+      overflow: visible;
     }
-    .card .label { font-size: 12px; color: var(--text2); margin-bottom: 8px; }
-    .card .value {
-      font-size: 22px;
+    .card { padding: 14px 16px; }
+    .panel { display: flex; flex-direction: column; min-height: 0; }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 12px 16px 10px;
+    }
+    .panel-body { padding: 0 16px 14px; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+
+    .label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: var(--text2);
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card .label { margin-bottom: 8px; }
+    .value {
+      font-size: 26px;
       font-weight: 600;
       letter-spacing: -0.01em;
       font-variant-numeric: tabular-nums;
+      line-height: 1.1;
     }
-    .card .sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .sub { font-size: 12px; color: var(--muted); margin-top: 5px; font-variant-numeric: tabular-nums; }
 
     .bull  { color: var(--bull); }
     .bear  { color: var(--bear); }
@@ -93,46 +176,101 @@
       width: 8px; height: 8px;
       border-radius: 50%;
       vertical-align: middle;
-      margin-right: 5px;
+      margin-right: 6px;
     }
     .dot.bull  { background: var(--bull); }
     .dot.bear  { background: var(--bear); }
     .dot.warn  { background: var(--warn); }
     .dot.muted { background: var(--muted); }
 
-    /* CDC chart */
-    .cdc-chart {
-      background: var(--surface);
+    /* ── Info tooltip ─────────────────────────────────── */
+    .info {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 15px; height: 15px;
+      border-radius: 50%;
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 20px 12px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      font-style: normal;
+      font-family: Georgia, 'Times New Roman', serif;
+      cursor: help;
+      flex: 0 0 auto;
+      user-select: none;
     }
+    .info:hover, .info:focus-visible {
+      color: var(--text);
+      border-color: var(--text2);
+      background: var(--surface-alt);
+      outline: none;
+    }
+    .info::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 9px);
+      left: -4px;
+      width: max-content;
+      max-width: 300px;
+      background: var(--tip-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 9px 11px;
+      font-size: 12px;
+      font-weight: 400;
+      font-family: system-ui, -apple-system, sans-serif;
+      line-height: 1.55;
+      text-align: left;
+      white-space: normal;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+      opacity: 0;
+      transform: translateY(-3px);
+      pointer-events: none;
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 100;
+    }
+    .info::before {
+      content: '';
+      position: absolute;
+      top: calc(100% + 3px);
+      left: 4px;
+      border: 5px solid transparent;
+      border-bottom-color: var(--tip-bg);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      z-index: 101;
+    }
+    .info:hover::after, .info:focus-visible::after,
+    .info:hover::before, .info:focus-visible::before {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    /* right-anchored variant for triggers near the right edge */
+    .info.tl::after { left: auto; right: -4px; }
+    .info.tl::before { left: auto; right: 4px; }
+
+    /* ── CDC 30-day strip ─────────────────────────────── */
     .cdc-chart-inner {
       position: relative;
       display: flex;
       align-items: flex-start;
-      gap: 4px;
-      height: 160px;
+      gap: 3px;
+      height: 150px;
+      flex: 1 1 auto;
     }
     .cdc-chart-inner::after {
       content: '';
       position: absolute;
-      left: 0; right: 0;
-      top: 80px;
+      left: 0; right: 0; top: 75px;
       height: 1px;
       background: var(--line);
       pointer-events: none;
     }
-    .db-slot {
-      flex: 1;
-      height: 160px;
-      display: flex;
-      flex-direction: column;
-    }
-    .db-block {
-      width: 100%;
-      border-radius: 2px;
-    }
+    .db-slot { flex: 1; height: 150px; display: flex; flex-direction: column; }
+    .db-block { width: 100%; border-radius: 2px; }
     .db-block.bull  { background: var(--bull); }
     .db-block.bear  { background: var(--bear); }
     .db-block.today { opacity: 0.45; }
@@ -144,15 +282,30 @@
       color: var(--muted);
     }
 
-    /* Fear & Greed gauge */
-    .fng-gauge-wrap {
-      background: var(--surface);
+    /* breakdown mini-grid under the strip */
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: var(--border);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px 20px 14px;
-      margin-top: 10px;
-      visibility: hidden;
+      border-radius: 6px;
+      overflow: hidden;
+      margin-top: 14px;
     }
+    .mini {
+      background: var(--surface);
+      padding: 10px 12px;
+    }
+    .mini .mlabel { font-size: 10.5px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+    .mini .mval { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; }
+    .mini .msub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Fear & Greed gauge ───────────────────────────── */
+    .fng-top { display: flex; align-items: baseline; gap: 10px; }
+    #fng-value { font-size: 40px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+    #fng-class { font-size: 15px; font-weight: 600; color: var(--text2); }
+    .fng-gauge-wrap { margin-top: 16px; visibility: hidden; }
     .fng-gauge {
       position: relative;
       height: 10px;
@@ -162,10 +315,8 @@
     }
     .fng-marker {
       position: absolute;
-      top: -4px;
-      left: 0;
-      width: 4px;
-      height: 18px;
+      top: -4px; left: 0;
+      width: 4px; height: 18px;
       border-radius: 2px;
       background: #fff;
       transform: translateX(-50%);
@@ -176,252 +327,251 @@
       display: flex;
       justify-content: space-between;
       margin-top: 10px;
-      font-size: 11px;
+      font-size: 10.5px;
       color: var(--muted);
     }
+    .fng-foot { margin-top: auto; padding-top: 14px; font-size: 12px; color: var(--muted); }
+    .fng-foot #fng-fetched { color: var(--text2); }
 
-    /* Notice */
-    .notice {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 12px 16px;
-      font-size: 13px;
-      color: var(--text2);
-      margin-bottom: 16px;
-    }
-    .notice.warn  { border-color: var(--warn-border);  color: var(--warn-text); }
-    .notice.stale { border-color: var(--stale-border); color: var(--stale-text); }
-    .notice strong { color: var(--text); font-weight: 500; }
-
-    /* Table */
-    .table-wrap {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      overflow: hidden;
+    /* ── Block detail table ───────────────────────────── */
+    .table-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      border-radius: 0 0 var(--radius) var(--radius);
     }
     table { width: 100%; border-collapse: collapse; }
     th, td {
       text-align: left;
-      padding: 9px 16px;
+      padding: 8px 16px;
       border-bottom: 1px solid var(--border);
       font-size: 13px;
       font-variant-numeric: tabular-nums;
     }
     th {
-      font-size: 11px;
+      position: sticky;
+      top: 0;
+      font-size: 10.5px;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.06em;
       color: var(--text2);
       background: var(--surface-alt);
+      z-index: 1;
     }
-    tr:last-child td { border-bottom: none; }
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr:hover td { background: rgba(255,255,255,0.02); }
 
-    code {
-      font-family: monospace;
-      background: var(--surface-alt);
-      border: 1px solid var(--border);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 12px;
-      color: var(--text2);
+    /* price 2x2 grid */
+    .price-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
-    @media (max-width: 600px) {
-      main { padding: 20px 16px; }
-      .grid { grid-template-columns: 1fr 1fr; }
+    /* scrollbar polish */
+    .table-scroll::-webkit-scrollbar { width: 8px; }
+    .table-scroll::-webkit-scrollbar-thumb { background: var(--surface-alt); border-radius: 4px; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* Below the design target, let the page scroll instead of squashing */
+    @media (max-width: 1400px), (max-height: 820px) {
+      body { height: auto; overflow: auto; }
+      main { grid-template-rows: none; }
+      .panels { grid-template-columns: 1fr; }
+      .table-scroll { max-height: 420px; }
+    }
+    @media (max-width: 760px) {
+      .kpi-row { grid-template-columns: 1fr 1fr; }
     }
   </style>
 </head>
 <body>
 
 <header>
-  <a href="index.html">←</a>
+  <a href="index.html" class="back" aria-label="Back to ticker">←</a>
+  <h1>BTC Ticker <span class="sep">·</span><span class="muted2">Dashboard</span></h1>
+  <div class="header-right">
+    <span id="freshness-notice" class="notice">Checking data freshness…</span>
+    <span class="info tl" tabindex="0" role="img" aria-label="Maintenance help"
+      data-tip="Refresh data manually from the project directory: python3 fetch_cdc.py (CDC blocks) and python3 fetch_fng.py (Fear &amp; Greed). The bundled data files are the cold-start fallback; localStorage caches them for 1 hour.">i</span>
+  </div>
 </header>
 
 <main>
 
-  <div id="freshness-notice" class="notice">Checking data freshness…</div>
-
-  <!-- CDC file stats -->
-  <section class="section">
-    <div class="section-title">CDC data file — data/cdc.js</div>
-    <div class="grid">
-      <div class="card">
-        <div class="label">Generated</div>
-        <div class="value" id="cdc-generated">—</div>
-        <div class="sub" id="cdc-generated-sub"></div>
+  <!-- ── KPI strip ──────────────────────────────────── -->
+  <div class="kpi-row">
+    <div class="card">
+      <div class="label">Current signal
+        <span class="info" tabindex="0" role="img" aria-label="What is the current signal"
+          data-tip="Latest CDC signal from today's still-forming daily candle. Bullish when EMA-12 sits above EMA-26, bearish when below.">i</span>
       </div>
-      <div class="card">
-        <div class="label">Current signal</div>
-        <div class="value" id="cdc-signal">—</div>
-        <div class="sub">today (incomplete candle)</div>
-      </div>
-      <div class="card">
-        <div class="label">EMA diff today</div>
-        <div class="value" id="cdc-diff">—</div>
-        <div class="sub">|EMA12 − EMA26|</div>
-      </div>
-      <div class="card">
-        <div class="label">Current streak</div>
-        <div class="value" id="cdc-streak">—</div>
-        <div class="sub" id="cdc-streak-sub"></div>
-      </div>
+      <div class="value" id="cdc-signal">—</div>
     </div>
-  </section>
-
-  <!-- 30-day CDC chart -->
-  <section class="section">
-    <div class="section-title">30-day CDC strip</div>
-    <div class="cdc-chart">
-      <div class="cdc-chart-inner" id="cdc-chart"></div>
-      <div class="cdc-labels">
-        <span id="cdc-label-start">—</span>
-        <span id="cdc-label-end">today</span>
+    <div class="card">
+      <div class="label">EMA diff (today)
+        <span class="info" tabindex="0" role="img" aria-label="What is EMA diff"
+          data-tip="|EMA-12 − EMA-26| for today — how far apart the fast and slow moving averages are. Wider separation means a stronger trend.">i</span>
       </div>
+      <div class="value" id="cdc-diff">—</div>
     </div>
-  </section>
+    <div class="card">
+      <div class="label">Current streak
+        <span class="info" tabindex="0" role="img" aria-label="What is the streak"
+          data-tip="Number of consecutive days the signal has held the same direction.">i</span>
+      </div>
+      <div class="value" id="cdc-streak">—</div>
+      <div class="sub" id="cdc-streak-sub"></div>
+    </div>
+    <div class="card">
+      <div class="label">Data generated
+        <span class="info tl" tabindex="0" role="img" aria-label="When data was generated"
+          data-tip="When data/cdc.js was last produced by fetch_cdc.py. Cached in localStorage for 1 hour before the file is re-read.">i</span>
+      </div>
+      <div class="value" id="cdc-generated" style="font-size:18px">—</div>
+      <div class="sub" id="cdc-generated-sub"></div>
+    </div>
+  </div>
 
-  <!-- Fear & Greed index -->
-  <section class="section">
-    <div class="section-title">Market sentiment — Fear &amp; Greed index</div>
-    <div class="grid">
-      <div class="card">
-        <div class="label">Current index</div>
-        <div class="value" id="fng-value">—</div>
-        <div class="sub" id="fng-class">waiting for data…</div>
-      </div>
-      <div class="card">
-        <div class="label">Scale</div>
-        <div class="value" style="font-size:15px">0 – 100</div>
-        <div class="sub">0 = extreme fear · 100 = extreme greed</div>
-      </div>
-      <div class="card">
-        <div class="label">Generated</div>
-        <div class="value" id="fng-fetched">—</div>
-        <div class="sub" id="fng-fetched-sub"></div>
-      </div>
-      <div class="card">
-        <div class="label">Source</div>
-        <div class="value" style="font-size:15px">CoinMarketCap</div>
-        <div class="sub">data/fng.js · updated every 6h</div>
-      </div>
+  <!-- ── Panels ─────────────────────────────────────── -->
+  <div class="panels">
+
+    <!-- Column A: CDC strip + breakdown -->
+    <div class="col">
+      <section class="panel" style="flex:1 1 auto">
+        <div class="panel-head">
+          <span class="label">30-day CDC strip</span>
+          <span class="info" tabindex="0" role="img" aria-label="About the CDC strip"
+            data-tip="One block per day over roughly 30 days. Green = bullish, red = bearish; bar height scales with EMA separation. The faded block is today's incomplete candle.">i</span>
+        </div>
+        <div class="panel-body">
+          <div class="cdc-chart-inner" id="cdc-chart"></div>
+          <div class="cdc-labels">
+            <span id="cdc-label-start">—</span>
+            <span id="cdc-label-end">today</span>
+          </div>
+          <div class="mini-grid">
+            <div class="mini">
+              <div class="mlabel">Bull days</div>
+              <div class="mval bull" id="bull-count">—</div>
+              <div class="msub" id="bull-pct"></div>
+            </div>
+            <div class="mini">
+              <div class="mlabel">Bear days</div>
+              <div class="mval bear" id="bear-count">—</div>
+              <div class="msub" id="bear-pct"></div>
+            </div>
+            <div class="mini">
+              <div class="mlabel">Avg diff · bull</div>
+              <div class="mval" id="bull-avg-diff">—</div>
+              <div class="msub">separation</div>
+            </div>
+            <div class="mini">
+              <div class="mlabel">Avg diff · bear</div>
+              <div class="mval" id="bear-avg-diff">—</div>
+              <div class="msub">separation</div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
 
-    <div class="fng-gauge-wrap" id="fng-gauge-wrap">
-      <div class="fng-gauge"><div class="fng-marker" id="fng-marker"></div></div>
-      <div class="fng-scale">
-        <span>Extreme&nbsp;fear</span>
-        <span>Fear</span>
-        <span>Neutral</span>
-        <span>Greed</span>
-        <span>Extreme&nbsp;greed</span>
-      </div>
+    <!-- Column B: block detail table -->
+    <div class="col">
+      <section class="panel" style="flex:1 1 auto">
+        <div class="panel-head">
+          <span class="label">Block detail — newest first</span>
+          <span class="info" tabindex="0" role="img" aria-label="About the block table"
+            data-tip="Every CDC block, newest first — date, signal direction, and EMA separation in USD. The top row is today's incomplete candle.">i</span>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Date</th>
+                <th>Signal</th>
+                <th>EMA Diff</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody id="block-table">
+              <tr><td colspan="5" style="color:var(--muted);padding:20px 16px;">No CDC data loaded.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
 
-    <div class="notice" style="margin-top:16px">
-      <strong>How it works.</strong> CoinMarketCap's Crypto Fear &amp; Greed Index distils
-      overall market sentiment into a single number from <strong>0 (extreme fear)</strong>
-      to <strong>100 (extreme greed)</strong>, blending price momentum, volatility,
-      derivatives, market composition and volume. Low readings flag fear (often oversold);
-      high readings flag greed (often overbought).
-      <br><br>
-      <strong>How it's fetched.</strong> Because the CoinMarketCap API needs a private key,
-      it's never called from the browser. A scheduled GitHub Action runs
-      <code>python3 fetch_fng.py</code> every 6h (key supplied via the
-      <code>CMC_API_KEY</code> secret), which writes the latest reading to
-      <code>data/fng.js</code> (<code>window.LOCAL_FNG</code>) and commits it — exactly like
-      the CDC strip's <code>data/cdc.js</code>. The ticker and this dashboard read that file
-      and cache it in <code>localStorage</code> (<code>btcticker_v1_fng</code>) for an hour.
-    </div>
-  </section>
+    <!-- Column C: Fear & Greed + price history -->
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head">
+          <span class="label">Fear &amp; Greed
+            <span class="info tl" tabindex="0" role="img" aria-label="About Fear and Greed"
+              data-tip="CoinMarketCap's Crypto Fear &amp; Greed Index — a single number from 0 (extreme fear) to 100 (extreme greed) blending price momentum, volatility, derivatives, market composition and volume. Low readings flag fear (often oversold); high readings flag greed (often overbought). Fetched server-side every 6h into data/fng.js — the API key never reaches the browser.">i</span>
+          </span>
+        </div>
+        <div class="panel-body">
+          <div class="fng-top">
+            <span class="value" id="fng-value">—</span>
+            <span id="fng-class">waiting for data…</span>
+          </div>
+          <div class="fng-gauge-wrap" id="fng-gauge-wrap">
+            <div class="fng-gauge"><div class="fng-marker" id="fng-marker"></div></div>
+            <div class="fng-scale">
+              <span>Extreme&nbsp;fear</span>
+              <span>Fear</span>
+              <span>Neutral</span>
+              <span>Greed</span>
+              <span>Extreme&nbsp;greed</span>
+            </div>
+          </div>
+          <div class="fng-foot">
+            <span id="fng-fetched">—</span> · <span id="fng-fetched-sub"></span>
+          </div>
+        </div>
+      </section>
 
-  <!-- Signal breakdown -->
-  <section class="section">
-    <div class="section-title">Signal breakdown — last 30 days</div>
-    <div class="grid">
-      <div class="card">
-        <div class="label">Bullish days</div>
-        <div class="value bull" id="bull-count">—</div>
-        <div class="sub" id="bull-pct"></div>
-      </div>
-      <div class="card">
-        <div class="label">Bearish days</div>
-        <div class="value bear" id="bear-count">—</div>
-        <div class="sub" id="bear-pct"></div>
-      </div>
-      <div class="card">
-        <div class="label">Avg EMA diff (bull days)</div>
-        <div class="value" id="bull-avg-diff">—</div>
-        <div class="sub">average separation</div>
-      </div>
-      <div class="card">
-        <div class="label">Avg EMA diff (bear days)</div>
-        <div class="value" id="bear-avg-diff">—</div>
-        <div class="sub">average separation</div>
-      </div>
+      <section class="panel" style="flex:1 1 auto">
+        <div class="panel-head">
+          <span class="label">Price history — 24h
+            <span class="info tl" tabindex="0" role="img" aria-label="About price history"
+              data-tip="BTC price snapshots the ticker saves to localStorage (btcticker_v1_history), one per minute, over the last 24h. Open the ticker first to populate it.">i</span>
+          </span>
+        </div>
+        <div class="panel-body">
+          <div class="price-grid">
+            <div>
+              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Latest price</div>
+              <div class="value" style="font-size:20px" id="hist-latest">—</div>
+              <div class="sub" id="hist-latest-sub"></div>
+            </div>
+            <div>
+              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">Entries stored</div>
+              <div class="value" style="font-size:20px" id="hist-count">—</div>
+              <div class="sub">snapshots</div>
+            </div>
+            <div>
+              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">24h high</div>
+              <div class="value bull" style="font-size:20px" id="hist-high">—</div>
+              <div class="sub" id="hist-high-sub"></div>
+            </div>
+            <div>
+              <div class="mlabel" style="font-size:10.5px;color:var(--text2);text-transform:uppercase;letter-spacing:0.05em">24h low</div>
+              <div class="value bear" style="font-size:20px" id="hist-low">—</div>
+              <div class="sub" id="hist-low-sub"></div>
+            </div>
+          </div>
+        </div>
+      </section>
     </div>
-  </section>
 
-  <!-- Block detail table -->
-  <section class="section">
-    <div class="section-title">Block detail — newest first</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Date</th>
-            <th>Signal</th>
-            <th>EMA Diff</th>
-            <th>Note</th>
-          </tr>
-        </thead>
-        <tbody id="block-table">
-          <tr><td colspan="5" style="color:var(--muted);padding:20px 16px;">No CDC data loaded.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
-
-  <!-- Price history -->
-  <section class="section">
-    <div class="section-title">Price history — localStorage</div>
-    <div class="grid">
-      <div class="card">
-        <div class="label">Entries stored</div>
-        <div class="value" id="hist-count">—</div>
-        <div class="sub">1 snapshot per minute</div>
-      </div>
-      <div class="card">
-        <div class="label">Latest price</div>
-        <div class="value" id="hist-latest">—</div>
-        <div class="sub" id="hist-latest-sub"></div>
-      </div>
-      <div class="card">
-        <div class="label">24hr high</div>
-        <div class="value bull" id="hist-high">—</div>
-        <div class="sub" id="hist-high-sub"></div>
-      </div>
-      <div class="card">
-        <div class="label">24hr low</div>
-        <div class="value bear" id="hist-low">—</div>
-        <div class="sub" id="hist-low-sub"></div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Maintenance -->
-  <section class="section">
-    <div class="section-title">Maintenance</div>
-    <div class="notice">
-      Refresh CDC data: <code>python3 fetch_cdc.py</code> — run daily from the project directory.
-      The local file is the cold-start fallback; localStorage caches it for 1 hour.
-    </div>
-  </section>
-
+  </div>
 </main>
 
 <script src="data/cdc.js"></script>
@@ -474,7 +624,7 @@
       noticeEl.className = 'notice warn';
       noticeEl.innerHTML = `<strong>CDC data is ${fmtAge(age)}.</strong> Consider re-running <code>python3 fetch_cdc.py</code>.`;
     } else {
-      noticeEl.innerHTML = `CDC data generated <strong>${fmtAge(age)}</strong> — ${fmtDateTime(cdc.generated)}.`;
+      noticeEl.innerHTML = `CDC data generated <strong>${fmtAge(age)}</strong>`;
     }
 
     // Generated card
@@ -504,8 +654,8 @@
     document.getElementById('cdc-streak-sub').textContent =
       `consecutive ${lastSignal ? 'bullish' : 'bearish'}`;
 
-    // CDC chart (80px per side = 160px total)
-    const MAX_H = 80, MIN_H = 4;
+    // CDC chart (75px per side = 150px total)
+    const MAX_H = 75, MIN_H = 4;
     const diffs = blocks.map(b => b.diff);
     const minD  = Math.min(...diffs);
     const maxD  = Math.max(...diffs);
@@ -525,9 +675,9 @@
     const bullBlocks = blocks.filter(b => b.bull);
     const bearBlocks = blocks.filter(b => !b.bull);
     document.getElementById('bull-count').textContent = bullBlocks.length;
-    document.getElementById('bull-pct').textContent   = Math.round(bullBlocks.length / blocks.length * 100) + '% of 30 days';
+    document.getElementById('bull-pct').textContent   = Math.round(bullBlocks.length / blocks.length * 100) + '% of 30d';
     document.getElementById('bear-count').textContent = bearBlocks.length;
-    document.getElementById('bear-pct').textContent   = Math.round(bearBlocks.length / blocks.length * 100) + '% of 30 days';
+    document.getElementById('bear-pct').textContent   = Math.round(bearBlocks.length / blocks.length * 100) + '% of 30d';
     document.getElementById('bull-avg-diff').textContent =
       bullBlocks.length ? '$' + Math.round(avg(bullBlocks.map(b => b.diff))).toLocaleString() : '—';
     document.getElementById('bear-avg-diff').textContent =
@@ -616,7 +766,7 @@
       document.getElementById('hist-low').textContent      = fmtUSD(low);
       document.getElementById('hist-low-sub').textContent  = fmtDateTime(lowEntry.ts);
     } catch {
-      document.getElementById('hist-latest-sub').textContent = 'No history in localStorage — open the ticker first.';
+      document.getElementById('hist-latest-sub').textContent = 'No history — open the ticker first.';
     }
   })();
 </script>

@@ -1,6 +1,6 @@
 {
   "name": "btcticker",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Real-time BTC price ticker for kiosk display, with Android home-screen widgets via Capacitor",
   "main": "app.js",
   "scripts": {
