@@ -474,7 +474,62 @@ async function initCDC() {
 
 setInterval(initCDC, CDC_TTL_MS);
 
+// ── MEMPOOL FEES ──────────────────────────────────────────
+// mempool.space's recommended fee rates (sat/vB), mapped to the same four
+// priority tiers their website shows. One request returns all four; fees move
+// slowly so a 5-minute cadence is plenty. Cached in localStorage so the bar
+// repaints instantly on load and survives a brief API hiccup.
+//   No   → economyFee     Low  → hourFee
+//   Med  → halfHourFee     High → fastestFee
+const FEES_STORAGE_KEY = 'btcticker_v1_fees';
+const FEES_TTL_MS      = 5 * 60_000;
+const FEES_URL         = 'https://mempool.space/api/v1/fees/recommended';
+
+function renderFees(f) {
+  if (!f) return;
+  const cells = {
+    'fee-no':   f.economyFee,
+    'fee-low':  f.hourFee,
+    'fee-med':  f.halfHourFee,
+    'fee-high': f.fastestFee
+  };
+  for (const [id, v] of Object.entries(cells)) {
+    const e = document.getElementById(id);
+    if (e && v != null && !isNaN(v)) e.innerHTML = `${Math.round(v)}<span class="unit">sat/vB</span>`;
+  }
+}
+
+// paint last-known fees from the shared cache (the dashboard writes the same
+// key), returning the cache timestamp so the caller can decide whether it's
+// stale enough to warrant a network hit
+function loadCachedFees() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(FEES_STORAGE_KEY));
+    if (cached && cached.fees) { renderFees(cached.fees); return cached.ts || 0; }
+  } catch {}
+  return 0;
+}
+
+async function fetchFees() {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(FEES_URL, { signal: ctrl.signal });
+    const f = await r.json();
+    if (f && !isNaN(f.fastestFee)) {
+      renderFees(f);
+      try { localStorage.setItem(FEES_STORAGE_KEY, JSON.stringify({ ts: Date.now(), fees: f })); } catch {}
+    }
+  } catch {} finally { clearTimeout(tid); }
+}
+
+// the interval always hits the network — the cache is only for the instant
+// paint on load and for sharing the reading with the dashboard
+setInterval(fetchFees, FEES_TTL_MS);
+
 // ── INIT ──────────────────────────────────────────────────
 updateActive();
 connect(STATE.exchange);
 initCDC();
+// paint cached fees instantly; only fetch on load if the cache is stale/absent
+if (Date.now() - loadCachedFees() >= FEES_TTL_MS) fetchFees();
