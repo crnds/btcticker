@@ -502,7 +502,7 @@ function renderFees(t) {
   const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
   for (const [id, v] of Object.entries(cells)) {
     const e = document.getElementById(id);
-    if (e && v != null && !isNaN(v)) e.innerHTML = `${Number(v).toFixed(2)}<span class="unit">sat/vB</span>`;
+    if (e && v != null && !isNaN(v)) e.textContent = Number(v).toFixed(2);
   }
 }
 
