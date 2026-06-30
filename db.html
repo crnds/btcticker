@@ -524,7 +524,7 @@
       <div class="panel-head">
         <span class="label">Mempool fees <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0;">· sat/vB</span>
           <span class="info" tabindex="0" role="img" aria-label="About mempool fees"
-            data-tip="Recommended transaction fee rates from mempool.space, mapped to the same priority tiers their site shows: No = economy, Low = ~1hr target, Medium = ~30min, High = next block. Refreshed every 5 min; cached in localStorage (btcticker_v1_fees) and shared with the ticker.">i</span>
+            data-tip="Median fee rates (sat/vB) from mempool.space's projected blocks — genuinely fractional. High = next block (~10m), Medium = ~30 min, Low = ~1 hr, No priority = cheapest projected block. Refreshed every 5 min; cached in localStorage (btcticker_v2_fees) and shared with the ticker.">i</span>
         </span>
         <span id="fees-fetched" style="margin-left:auto;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;">—</span>
       </div>
@@ -878,20 +878,29 @@
   })();
 
   // ── Mempool fees (mempool.space, 5 min poll) ─────────
-  // Same four priority tiers the ticker shows. Painted instantly from the
-  // shared localStorage cache (btcticker_v1_fees), then refreshed live.
+  // Median fee rates from mempool.space's projected blocks — genuinely
+  // fractional, unlike the whole-sat/vB /fees/recommended endpoint. Same four
+  // tiers the ticker shows; painted instantly from the shared localStorage
+  // cache (btcticker_v2_fees), then refreshed live.
   (function mempoolFees() {
-    const FEES_URL = 'https://mempool.space/api/v1/fees/recommended';
-    const KEY      = 'btcticker_v1_fees';
+    const FEES_URL = 'https://mempool.space/api/v1/fees/mempool-blocks';
+    const KEY      = 'btcticker_v2_fees';
     const TTL_MS   = 5 * 60_000;
-    const MAP      = { 'fee-no': 'economyFee', 'fee-low': 'hourFee', 'fee-med': 'halfHourFee', 'fee-high': 'fastestFee' };
     const fetchedEl = document.getElementById('fees-fetched');
 
-    function render(f, ts) {
-      if (!f) return;
-      for (const [id, key] of Object.entries(MAP)) {
-        const v = f[key];
-        if (v != null && !isNaN(v)) document.getElementById(id).textContent = Math.round(v);
+    // projected blocks → median fee per tier (mirrors the ticker's app.js)
+    function deriveTiers(blocks) {
+      if (!Array.isArray(blocks) || !blocks.length) return null;
+      const n   = blocks.length;
+      const med = i => blocks[Math.min(i, n - 1)].medianFee;
+      return { high: med(0), med: med(2), low: med(5), no: med(n - 1) };
+    }
+
+    function render(t, ts) {
+      if (!t) return;
+      const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
+      for (const [id, v] of Object.entries(cells)) {
+        if (v != null && !isNaN(v)) document.getElementById(id).textContent = Number(v).toFixed(2);
       }
       if (ts) fetchedEl.textContent = fmtAge(hoursAgo(ts));
     }
@@ -900,7 +909,7 @@
     let cachedTs = 0;
     try {
       const c = JSON.parse(localStorage.getItem(KEY));
-      if (c && c.fees) { render(c.fees, c.ts); cachedTs = c.ts || 0; }
+      if (c && c.tiers) { render(c.tiers, c.ts); cachedTs = c.ts || 0; }
     } catch {}
 
     async function tick() {
@@ -909,11 +918,11 @@
       try {
         const r = await fetch(FEES_URL, { signal: ctrl.signal });
         if (!r.ok) throw new Error('HTTP ' + r.status);
-        const f = await r.json();
-        if (f && !isNaN(f.fastestFee)) {
+        const tiers = deriveTiers(await r.json());
+        if (tiers) {
           const ts = Date.now();
-          render(f, ts);
-          try { localStorage.setItem(KEY, JSON.stringify({ ts, fees: f })); } catch {}
+          render(tiers, ts);
+          try { localStorage.setItem(KEY, JSON.stringify({ ts, tiers })); } catch {}
         }
       } catch {
         if (!cachedTs) fetchedEl.textContent = 'offline';

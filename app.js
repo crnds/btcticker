@@ -475,37 +475,44 @@ async function initCDC() {
 setInterval(initCDC, CDC_TTL_MS);
 
 // ── MEMPOOL FEES ──────────────────────────────────────────
-// mempool.space's recommended fee rates (sat/vB), mapped to the same four
-// priority tiers their website shows. One request returns all four; fees move
-// slowly so a 5-minute cadence is plenty. Cached in localStorage so the bar
-// repaints instantly on load and survives a brief API hiccup.
-//   No   → economyFee     Low  → hourFee
-//   Med  → halfHourFee     High → fastestFee
-const FEES_STORAGE_KEY = 'btcticker_v1_fees';
+// Fee rates (sat/vB) for four priority tiers, derived from mempool.space's
+// projected blocks (/fees/mempool-blocks). Each projected block holds ~10 min
+// of pending transactions; we take the median fee at the depth matching each
+// tier, so the numbers are genuinely fractional rather than the whole-sat/vB
+// values the /fees/recommended endpoint rounds to.
+//   High → next block (~10m)        Med → ~30m (3rd projected block)
+//   Low  → ~1h (6th projected block) No  → cheapest projected block (economy)
+// Fees move slowly so a 5-minute cadence is plenty. Cached in localStorage so
+// the bar repaints instantly on load; the cache is shared with the dashboard.
+const FEES_STORAGE_KEY = 'btcticker_v2_fees';
 const FEES_TTL_MS      = 5 * 60_000;
-const FEES_URL         = 'https://mempool.space/api/v1/fees/recommended';
+const FEES_URL         = 'https://mempool.space/api/v1/fees/mempool-blocks';
 
-function renderFees(f) {
-  if (!f) return;
-  const cells = {
-    'fee-no':   f.economyFee,
-    'fee-low':  f.hourFee,
-    'fee-med':  f.halfHourFee,
-    'fee-high': f.fastestFee
-  };
+// projected blocks → { no, low, med, high } median fee rates; indices are
+// clamped so a near-empty mempool (one projected block) collapses gracefully
+function deriveTiers(blocks) {
+  if (!Array.isArray(blocks) || !blocks.length) return null;
+  const n   = blocks.length;
+  const med = i => blocks[Math.min(i, n - 1)].medianFee;
+  return { high: med(0), med: med(2), low: med(5), no: med(n - 1) };
+}
+
+function renderFees(t) {
+  if (!t) return;
+  const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
   for (const [id, v] of Object.entries(cells)) {
     const e = document.getElementById(id);
-    if (e && v != null && !isNaN(v)) e.innerHTML = `${Math.round(v)}<span class="unit">sat/vB</span>`;
+    if (e && v != null && !isNaN(v)) e.innerHTML = `${Number(v).toFixed(2)}<span class="unit">sat/vB</span>`;
   }
 }
 
-// paint last-known fees from the shared cache (the dashboard writes the same
+// paint last-known tiers from the shared cache (the dashboard writes the same
 // key), returning the cache timestamp so the caller can decide whether it's
 // stale enough to warrant a network hit
 function loadCachedFees() {
   try {
     const cached = JSON.parse(localStorage.getItem(FEES_STORAGE_KEY));
-    if (cached && cached.fees) { renderFees(cached.fees); return cached.ts || 0; }
+    if (cached && cached.tiers) { renderFees(cached.tiers); return cached.ts || 0; }
   } catch {}
   return 0;
 }
@@ -515,10 +522,10 @@ async function fetchFees() {
   const tid  = setTimeout(() => ctrl.abort(), 8000);
   try {
     const r = await fetch(FEES_URL, { signal: ctrl.signal });
-    const f = await r.json();
-    if (f && !isNaN(f.fastestFee)) {
-      renderFees(f);
-      try { localStorage.setItem(FEES_STORAGE_KEY, JSON.stringify({ ts: Date.now(), fees: f })); } catch {}
+    const tiers = deriveTiers(await r.json());
+    if (tiers) {
+      renderFees(tiers);
+      try { localStorage.setItem(FEES_STORAGE_KEY, JSON.stringify({ ts: Date.now(), tiers })); } catch {}
     }
   } catch {} finally { clearTimeout(tid); }
 }

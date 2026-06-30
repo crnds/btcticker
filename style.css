@@ -275,6 +275,7 @@ body {
   top: clamp(14px, 5vh, 56px);
   left: 50%;
   transform: translateX(-50%);
+  width: 75vw;
   display: flex;
   align-items: stretch;
   gap: 14px;
@@ -283,11 +284,13 @@ body {
   z-index: 90;
 }
 .fee-group {
+  flex: 3;
   display: flex;
   border-left: 1px solid var(--border);
   padding-left: 14px;
 }
 .fee-cell {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -305,7 +308,7 @@ body {
   color: var(--text2);
   font-variant-numeric: tabular-nums;
 }
-.fee-val .unit { color: var(--faint2); font-size: 0.8em; margin-left: 3px; }
+.fee-val .unit { color: var(--faint2); font-size: 0.5em; margin-left: 3px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
