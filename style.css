@@ -79,7 +79,7 @@ body {
 }
 .dec-wrap .chg.pos { color: var(--up); }
 .dec-wrap .chg.neg { color: var(--down); }
-.dec-wrap .dec     { color: var(--muted); font-size: 1em; line-height: 1; }
+.dec-wrap .dec     { color: rgba(255,255,255,0.9); font-size: 1em; line-height: 1; }
 
 #ws-status {
   position: fixed;
@@ -295,13 +295,13 @@ body {
   padding: 0 10px;
 }
 .fee-label {
-  font-size: 10px;
+  font-size: 20px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--faint);
 }
 .fee-val {
-  font-size: 13px;
+  font-size: 44px;
   color: var(--text2);
   font-variant-numeric: tabular-nums;
 }
