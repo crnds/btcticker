@@ -91,10 +91,7 @@ body {
 #ws-status {
   position: absolute;
   bottom: 16px;
-  left: 0;
-  right: 0;
-  width: fit-content;
-  margin-inline: auto;
+  right: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
