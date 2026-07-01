@@ -56,10 +56,12 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 | Exchange | Feed | Pair |
 |---|---|---|
 | Binance | WebSocket | BTC/USDT |
-| Bitstamp | WebSocket + REST | BTC/USD |
+| Bitstamp | WebSocket | BTC/USD |
 | Coinbase | WebSocket | BTC/USD |
 | Kraken | WebSocket v2 | BTC/USD |
 | OKX | WebSocket | BTC/USDT |
+
+Bitstamp's trade stream doesn't include a 24h change figure, and their REST ticker endpoint now sits behind bot-protection that blocks plain fetches — so its % change is instead derived from the app's own rolling price history rather than fetched live.
 
 The same `···` menu has a **Display** section below the exchange list, letting you show/hide each metric independently — TX Fees, F&G Index, 24H % Change, CDC Strip. All four are visible by default; toggling doesn't close the menu, so you can flip several at once. The choice is persisted to `localStorage` and restored on the next visit.
 
@@ -383,7 +385,7 @@ BTC Ticker has no backend of its own — every number on screen is fetched strai
 | Provider | Used for |
 |---|---|
 | [Binance](https://www.binance.com) | Live price stream (default exchange) and the Android widgets' REST ticker |
-| [Bitstamp](https://www.bitstamp.net) | Live price stream + 24 hr change |
+| [Bitstamp](https://www.bitstamp.net) | Live price stream (24h change is derived locally, not fetched) |
 | [Coinbase](https://www.coinbase.com) | Live price stream (Advanced Trade WebSocket) |
 | [Kraken](https://www.kraken.com) | Live price stream + daily OHLC candles powering the CDC Action Zone |
 | [OKX](https://www.okx.com) | Live price stream |

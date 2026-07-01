@@ -27,14 +27,12 @@ const EXCHANGES = {
   bitstamp: {
     label: 'Bitstamp',
     url: 'wss://ws.bitstamp.net',
-    async init() {
-      try {
-        const d = await fetchJSON('https://www.bitstamp.net/api/v2/ticker/btcusd/');
-        const change = d.open
-          ? ((parseFloat(d.last) - parseFloat(d.open)) / parseFloat(d.open)) * 100
-          : null;
-        return { change };
-      } catch { return { change: null }; }
+    // Bitstamp's ticker REST endpoint now sits behind bot-protection that
+    // returns an HTML challenge page instead of JSON (blocks plain fetches,
+    // not just cross-origin ones) — derive the 24h change from our own
+    // rolling price history instead; see estimateChangeFromHistory().
+    init() {
+      return { change: estimateChangeFromHistory() };
     },
     subscribe(ws) {
       ws.send(JSON.stringify({ event: 'bts:subscribe', data: { channel: 'live_trades_btcusd' } }));
@@ -165,6 +163,18 @@ function saveHistory(h) {
 }
 
 STATE.history = loadHistory();
+
+// best-effort 24h % change from our own rolling snapshots — used by exchanges
+// whose ticker doesn't include a change figure (currently just Bitstamp).
+// Accuracy improves as the 24h window fills in; needs 2+ samples so a lone
+// snapshot doesn't read as a false "0% change" instead of "no data yet".
+function estimateChangeFromHistory() {
+  if (STATE.history.length < 2) return null;
+  const oldest = STATE.history[0].price;
+  const newest = STATE.history[STATE.history.length - 1].price;
+  if (!oldest || !newest) return null;
+  return ((newest - oldest) / oldest) * 100;
+}
 
 function snapshotHistory() {
   // only snapshot prices confirmed live within the last interval — a dead

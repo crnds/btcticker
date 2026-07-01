@@ -174,9 +174,9 @@ body {
 #menu-list button:hover { color: var(--text2); }
 #menu-list button.active { color: var(--text); }
 #menu-list button.active::after {
-  content: ' ●';
+  content: ' ✓';
   color: var(--up);
-  font-size: 7px;
+  font-size: 11px;
   vertical-align: middle;
 }
 
