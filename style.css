@@ -114,10 +114,9 @@ body {
   50%       { opacity: 0.3; }
 }
 
-#fullscreen-btn {
-  position: fixed;
-  top: 0;
-  right: 0;
+/* shared by the menu toggle and fullscreen toggle — both are fixed,
+   icon-only, top-corner controls */
+.icon-btn {
   background: none;
   border: none;
   color: var(--muted);
@@ -125,10 +124,16 @@ body {
   padding: 14px 16px;
   line-height: 0;
   user-select: none;
-  z-index: 100;
   transition: color 0.2s;
 }
-#fullscreen-btn:hover { color: var(--hover); }
+.icon-btn:hover { color: var(--hover); }
+
+#fullscreen-btn {
+  position: fixed;
+  top: 0;
+  right: 0;
+  z-index: 100;
+}
 
 #menu {
   position: fixed;
@@ -136,17 +141,6 @@ body {
   left: 0;
   z-index: 100;
 }
-#menu-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  padding: 14px 16px;
-  line-height: 0;
-  user-select: none;
-  transition: color 0.2s;
-}
-#menu-btn:hover { color: var(--hover); }
 
 #menu-list {
   display: none;
@@ -195,8 +189,7 @@ body {
 }
 #dashboard-link:hover { color: var(--accent-hover); }
 
-#menu-btn:focus-visible,
-#fullscreen-btn:focus-visible,
+.icon-btn:focus-visible,
 #menu-list button:focus-visible,
 #dashboard-link:focus-visible {
   outline: 2px solid var(--accent);

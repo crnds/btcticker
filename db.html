@@ -877,7 +877,7 @@
     setInterval(tick, POLL_MS);
   })();
 
-  // ── Mempool fees (mempool.space, 5 min poll) ─────────
+  // ── Mempool fees (mempool.space, 60s poll) ─────────
   // Median fee rates from mempool.space's projected blocks — genuinely
   // fractional, unlike the whole-sat/vB /fees/recommended endpoint. Same four
   // tiers the ticker shows; painted instantly from the shared localStorage
@@ -885,7 +885,7 @@
   (function mempoolFees() {
     const FEES_URL = 'https://mempool.space/api/v1/fees/mempool-blocks';
     const KEY      = 'btcticker_v2_fees';
-    const TTL_MS   = 5 * 60_000;
+    const TTL_MS   = 60_000;
     const fetchedEl = document.getElementById('fees-fetched');
 
     // projected blocks → median fee per tier (mirrors the ticker's app.js)

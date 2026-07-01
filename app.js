@@ -1,3 +1,18 @@
+// ── NETWORK ───────────────────────────────────────────────
+// shared fetch-with-timeout for the exchange/CDC/fees REST calls; callers
+// still wrap it in try/catch since a timed-out or malformed response should
+// fail soft, not throw uncaught
+async function fetchJSON(url, timeoutMs = 8000) {
+  const ctrl = new AbortController();
+  const tid  = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    return await r.json();
+  } finally {
+    clearTimeout(tid);
+  }
+}
+
 // ── EXCHANGE CONFIGS ──────────────────────────────────────
 const EXCHANGES = {
   binance: {
@@ -13,17 +28,13 @@ const EXCHANGES = {
     label: 'Bitstamp',
     url: 'wss://ws.bitstamp.net',
     async init() {
-      const ctrl = new AbortController();
-      const tid  = setTimeout(() => ctrl.abort(), 8000);
       try {
-        const r = await fetch('https://www.bitstamp.net/api/v2/ticker/btcusd/', { signal: ctrl.signal });
-        const d = await r.json();
+        const d = await fetchJSON('https://www.bitstamp.net/api/v2/ticker/btcusd/');
         const change = d.open
           ? ((parseFloat(d.last) - parseFloat(d.open)) / parseFloat(d.open)) * 100
           : null;
         return { change };
       } catch { return { change: null }; }
-      finally { clearTimeout(tid); }
     },
     subscribe(ws) {
       ws.send(JSON.stringify({ event: 'bts:subscribe', data: { channel: 'live_trades_btcusd' } }));
@@ -86,6 +97,9 @@ const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
 const CDC_TTL_MS      = 60 * 60 * 1000;
 const SNAPSHOT_MS     = 60_000;
 const WINDOW_MS       = 24 * 60 * 60_000;
+const AGE_TICK_MS     = 1000;
+const PRICE_TICK_MS   = 500;
+const REST_CHANGE_TTL_MS = 5 * 60_000;
 
 // one-time migration from the pre-v1 unversioned keys
 try {
@@ -136,7 +150,7 @@ function saveHistory(h) {
 
 STATE.history = loadHistory();
 
-setInterval(() => {
+function snapshotHistory() {
   // only snapshot prices confirmed live within the last interval — a dead
   // socket must not keep stamping the old price with fresh timestamps
   if (!STATE.latest || !STATE.lastUpdated || Date.now() - STATE.lastUpdated >= SNAPSHOT_MS) return;
@@ -144,7 +158,8 @@ setInterval(() => {
   STATE.history.push({ ts: now, price: STATE.latest, change: STATE.latestChange });
   STATE.history = STATE.history.filter(e => e.ts >= now - WINDOW_MS);
   saveHistory(STATE.history);
-}, SNAPSHOT_MS);
+}
+setInterval(snapshotHistory, SNAPSHOT_MS);
 
 // ── DISPLAY ───────────────────────────────────────────────
 function fmt(n, change) {
@@ -182,19 +197,21 @@ function fmtAgo(ms) {
   return Math.floor(secs / 3600) + 'h ago';
 }
 
-setInterval(() => {
+function tickAge() {
   if (!STATE.lastUpdated) return;
   time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
-}, 1000);
+}
+setInterval(tickAge, AGE_TICK_MS);
 
-setInterval(() => {
+function tickPriceRender() {
   if (STATE.latest === STATE.last) return;
   STATE.last = STATE.latest;
   if (!STATE.pending) {
     STATE.pending = true;
     requestAnimationFrame(() => { el.innerHTML = fmt(STATE.last, STATE.latestChange); STATE.pending = false; });
   }
-}, 500);
+}
+setInterval(tickPriceRender, PRICE_TICK_MS);
 
 // ── FEAR & GREED INDEX ────────────────────────────────────
 // CoinMarketCap's Fear & Greed index, refreshed every 6h server-side and
@@ -301,12 +318,13 @@ function connect(key) {
 
 // Bitstamp's % change comes from a one-off REST call, not the trade stream —
 // refresh it periodically so it doesn't go stale on a long-running kiosk
-setInterval(async () => {
+async function refreshRestChange() {
   const exchange = EXCHANGES[STATE.exchange];
   if (!exchange.init || !STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) return;
   const { change } = await exchange.init();
   if (change !== null && !isNaN(change)) STATE.latestChange = change;
-}, 5 * 60_000);
+}
+setInterval(refreshRestChange, REST_CHANGE_TTL_MS);
 
 // ── MENU ──────────────────────────────────────────────────
 function updateActive() {
@@ -392,6 +410,8 @@ document.addEventListener('webkitfullscreenchange', onFullscreenChange);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) initCDC(); });
 
 // ── CDC ACTION ZONE ───────────────────────────────────────
+const cdcStrip = document.getElementById('cdc-strip');
+
 function calcEMA(closes, period) {
   const k   = 2 / (period + 1);
   const out = new Array(closes.length).fill(null);
@@ -418,15 +438,8 @@ async function fetchCDCBlocks() {
   }
 
   // Tier 3: Kraken REST API (interval=1440 = 1 day)
-  const ctrl = new AbortController();
-  const tid  = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(
-      'https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440',
-      { signal: ctrl.signal }
-    );
-    clearTimeout(tid);
-    const json    = await r.json();
+    const json    = await fetchJSON('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440');
     const result  = json.result;
     const pairKey = Object.keys(result).find(k => k !== 'last');
     const closes  = result[pairKey].slice(-100).map(c => parseFloat(c[4]));
@@ -441,16 +454,14 @@ async function fetchCDCBlocks() {
     try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks })); } catch {}
     return blocks;
   } catch {
-    clearTimeout(tid);
     return null;
   }
 }
 
 function renderCDC(blocks) {
-  const strip = document.getElementById('cdc-strip');
   if (!blocks) {
     // keep previously rendered blocks; only show the error when there's nothing
-    if (!strip.childElementCount) strip.innerHTML = '<span class="cdc-error">CDC unavailable</span>';
+    if (!cdcStrip.childElementCount) cdcStrip.innerHTML = '<span class="cdc-error">CDC unavailable</span>';
     return;
   }
   const diffs = blocks.map(b => b.diff);
@@ -458,13 +469,13 @@ function renderCDC(blocks) {
   const maxD  = Math.max(...diffs);
   const range = maxD - minD || 1;
   const MIN_H = 4, MAX_H = 52;
-  strip.innerHTML = blocks.map(b => {
+  cdcStrip.innerHTML = blocks.map(b => {
     const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
     const mt = b.bull ? (MAX_H - h) : MAX_H;
     return `<div class="cdc-slot"><div class="cdc-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
   }).join('');
   const bullCount = blocks.filter(b => b.bull).length;
-  strip.setAttribute('aria-label',
+  cdcStrip.setAttribute('aria-label',
     `CDC Action Zone: ${bullCount} of ${blocks.length} days bullish`);
 }
 
@@ -482,11 +493,20 @@ setInterval(initCDC, CDC_TTL_MS);
 // values the /fees/recommended endpoint rounds to.
 //   High → next block (~10m)        Med → ~30m (3rd projected block)
 //   Low  → ~1h (6th projected block) No  → cheapest projected block (economy)
-// Fees move slowly so a 5-minute cadence is plenty. Cached in localStorage so
+// Fee tiers only really shift on a new block (~10min avg) or a mempool
+// reshuffle, but a 60s cadence keeps the bar in step with the live price
+// ticker next to it at negligible request cost. Cached in localStorage so
 // the bar repaints instantly on load; the cache is shared with the dashboard.
 const FEES_STORAGE_KEY = 'btcticker_v2_fees';
-const FEES_TTL_MS      = 5 * 60_000;
+const FEES_TTL_MS      = 60_000;
 const FEES_URL         = 'https://mempool.space/api/v1/fees/mempool-blocks';
+
+const feeEls = {
+  no:   document.getElementById('fee-no'),
+  low:  document.getElementById('fee-low'),
+  med:  document.getElementById('fee-med'),
+  high: document.getElementById('fee-high'),
+};
 
 // projected blocks → { no, low, med, high } median fee rates; indices are
 // clamped so a near-empty mempool (one projected block) collapses gracefully
@@ -506,10 +526,9 @@ function fmtFeeRate(v) {
 
 function renderFees(t) {
   if (!t) return;
-  const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
-  for (const [id, v] of Object.entries(cells)) {
-    const e = document.getElementById(id);
-    if (e && v != null && !isNaN(v)) e.textContent = fmtFeeRate(Number(v));
+  for (const [key, el] of Object.entries(feeEls)) {
+    const v = t[key];
+    if (v != null && !isNaN(v)) el.textContent = fmtFeeRate(Number(v));
   }
 }
 
@@ -525,16 +544,13 @@ function loadCachedFees() {
 }
 
 async function fetchFees() {
-  const ctrl = new AbortController();
-  const tid  = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(FEES_URL, { signal: ctrl.signal });
-    const tiers = deriveTiers(await r.json());
+    const tiers = deriveTiers(await fetchJSON(FEES_URL));
     if (tiers) {
       renderFees(tiers);
       try { localStorage.setItem(FEES_STORAGE_KEY, JSON.stringify({ ts: Date.now(), tiers })); } catch {}
     }
-  } catch {} finally { clearTimeout(tid); }
+  } catch {}
 }
 
 // the interval always hits the network — the cache is only for the instant
