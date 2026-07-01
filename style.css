@@ -179,6 +179,19 @@ body {
   font-size: 7px;
   vertical-align: middle;
 }
+
+/* section label separating the display toggles from the exchange list above */
+.menu-heading {
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+  padding: 10px 16px 4px;
+  font-family: monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint2);
+}
+
 #dashboard-link {
   border-top: 1px solid var(--border);
   margin-top: 4px;
@@ -305,6 +318,12 @@ body {
   color: var(--accent);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* per-metric show/hide, toggled from the settings menu */
+#fees.hidden,
+#cdc-strip.hidden {
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -61,23 +61,28 @@ Switch via the `···` menu. Selection is persisted to `localStorage`.
 | Kraken | WebSocket v2 | BTC/USD |
 | OKX | WebSocket | BTC/USDT |
 
+The same `···` menu has a **Display** section below the exchange list, letting you show/hide each metric independently — TX Fees, F&G Index, 24H % Change, CDC Strip. All four are visible by default; toggling doesn't close the menu, so you can flip several at once. The choice is persisted to `localStorage` and restored on the next visit.
+
 ---
 
 ## Display
 
 ```
 ┌─────────────────────────────────┐
-│ ···                          ⛶  │
+│ ···   NO  LOW  MED  HIGH     ⛶  │
+│       0.4  0.6  0.8   1         │
 │                                 │
-│      104,888  +6%               │
-│              .50                │
-│                                 │
+│                             17  │
+│      104,888              +6%   │
+│                     .50         │
 │  ▄▄ ▂▂ ██ ▃▃ ▅▅ ██ ▄▄ ▂▂ ▇▇   │  ← CDC strip (30 days, green/red)
 │  WS-Status: ● live  2s ago      │
 └─────────────────────────────────┘
 ```
 
 - Price scales with viewport (`min(30vw, 80vh)`) — fills any screen size
+- Fee bar (top): four sat/vB tiers from mempool.space, also `min(vw, vh)`-scaled so it stays legible on short kiosk screens, not just narrow ones
+- Fear & Greed index stacked above the 24 hr % change, coloured by quintile band
 - 24 hr % change stacked above the decimal, green `+` / red `−`
 - CDC Action Zone: 30-day EMA(12)/EMA(26) crossover bars — green = bull, red = bear
 - Status bar: pulsing green dot when live, red when reconnecting
@@ -213,6 +218,39 @@ python3 fetch_cdc.py
 
 ---
 
+## Transaction Fees
+
+Four priority tiers (No / Low / Med / High) shown above the price, sourced from mempool.space's [`/api/v1/fees/mempool-blocks`](https://mempool.space/docs/api/rest#get-mempool-blocks-fees) — each projected block holds ~10 min of pending transactions, and the median fee at a given block depth becomes that tier:
+
+| Tier | Depth | ETA |
+|---|---|---|
+| High | 1st projected block | ~10 min |
+| Med | 3rd projected block | ~30 min |
+| Low | 6th projected block | ~1 hr |
+| No | cheapest projected block | economy |
+
+This gives genuinely fractional sat/vB values, unlike the whole-number `/fees/recommended` endpoint. Polled every 60s and cached in `localStorage` (shared with the dashboard) so the bar repaints instantly on load.
+
+**Display rounding** happens client-side only — values ≥1 sat/vB round to a whole number, values below 1 round to 1 decimal (e.g. `0.27` → `0.3`). The fetched and cached values themselves always stay fractional-precise; only the on-screen text is rounded.
+
+---
+
+## Fear & Greed Index (Ticker)
+
+Shown stacked above the 24 hr % change, coloured by quintile band (red → orange → yellow → light green → green). Unlike the Android widget (which uses the keyless alternative.me API), the ticker's reading comes from **CoinMarketCap**, which requires a private API key — so it's never fetched from the browser. Instead, a GitHub Actions workflow (`update-fng.yml`) fetches it server-side every 6 hours and commits the result to `data/fng.js`:
+
+1. **`localStorage`** — cached for 1 hour after last read
+2. **`data/fng.js`** — bundled snapshot committed by CI
+3. A reading older than 48 hours is flagged **stale** in the UI (dimmed, dotted underline) — a signal the refresh pipeline (e.g. the `CMC_API_KEY` secret) needs attention
+
+To refresh the bundled snapshot manually (requires `CMC_API_KEY`):
+
+```bash
+CMC_API_KEY=xxxxxxxx python3 fetch_fng.py
+```
+
+---
+
 ## Building the Android APK
 
 Requires [Android Studio](https://developer.android.com/studio).
@@ -260,18 +298,21 @@ keytool -genkeypair -keystore android/btcticker-release.keystore \
 
 ```
 btcticker/
-├── index.html              — ticker: price display + exchange menu + CDC strip
+├── index.html              — ticker: price display + exchange menu + fee bar + CDC strip
 ├── style.css               — layout, Bebas Neue font, dark theme
-├── app.js                  — WebSocket client, localStorage history, CDC logic
-├── db.html                 — dashboard: CDC stats + price history
+├── app.js                  — WebSocket client, localStorage history, CDC/fees/F&G logic
+├── db.html                 — dashboard: CDC stats + fee tiers + price history
 ├── fetch_cdc.py            — fetches daily OHLC from Kraken, writes data/cdc.js
+├── fetch_fng.py            — fetches CoinMarketCap Fear & Greed index, writes data/fng.js
 ├── data/
-│   └── cdc.js              — bundled CDC data (fallback when API is unavailable)
+│   ├── cdc.js              — bundled CDC data (fallback when API is unavailable)
+│   └── fng.js              — bundled Fear & Greed snapshot (fallback when API is unavailable)
 ├── assets/
 │   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
 ├── install.sh              — Linux kiosk installer (browser launcher + autostart)
 ├── .github/workflows/
-│   └── update-cdc.yml      — daily GitHub Actions refresh of data/cdc.js
+│   ├── update-cdc.yml      — daily GitHub Actions refresh of data/cdc.js
+│   └── update-fng.yml      — 6-hourly GitHub Actions refresh of data/fng.js
 ├── docs/                   — README screenshots
 ├── android/                — Capacitor Android project (build APK in Android Studio)
 │   └── app/src/main/java/com/btcticker/app/
@@ -321,6 +362,9 @@ firefox --kiosk index.html
 | `btcticker_v1_history` | Price snapshots (rolling 24 hr) |
 | `btcticker_v1_exchange` | Last selected exchange |
 | `btcticker_v1_cdc` | CDC blocks cache (1 hr TTL) |
+| `btcticker_v1_fng` | Fear & Greed index cache (1 hr TTL) |
+| `btcticker_v2_fees` | Mempool fee tiers cache (60s TTL) — shared with the dashboard |
+| `btcticker_v1_visibility` | Per-metric show/hide preference (TX Fees, F&G, % change, CDC strip) |
 
 Pre-v1 unversioned keys (`btcticker_history`, `btcticker_exchange`) are migrated automatically on first load.
 
@@ -329,6 +373,25 @@ Pre-v1 unversioned keys (`btcticker_history`, `btcticker_exchange`) are migrated
 ## Font
 
 **Bebas Neue** self-hosted from `assets/bebas-neue-400.woff2`. No external font requests on load.
+
+---
+
+## Data Sources & Credits
+
+BTC Ticker has no backend of its own — every number on screen is fetched straight from a public API. Thanks to these providers for making free market data available:
+
+| Provider | Used for |
+|---|---|
+| [Binance](https://www.binance.com) | Live price stream (default exchange) and the Android widgets' REST ticker |
+| [Bitstamp](https://www.bitstamp.net) | Live price stream + 24 hr change |
+| [Coinbase](https://www.coinbase.com) | Live price stream (Advanced Trade WebSocket) |
+| [Kraken](https://www.kraken.com) | Live price stream + daily OHLC candles powering the CDC Action Zone |
+| [OKX](https://www.okx.com) | Live price stream |
+| [mempool.space](https://mempool.space) | Transaction fee tiers, via their [mempool-blocks endpoint](https://mempool.space/docs/api/rest#get-mempool-blocks-fees) |
+| [CoinMarketCap](https://coinmarketcap.com) | Fear & Greed Index for the ticker (fetched server-side only, via a private API key) |
+| [Alternative.me](https://alternative.me/crypto/fear-and-greed-index/) | Fear & Greed Index for the Android widget (keyless, public endpoint) |
+
+None of these providers endorse or are affiliated with this project — they're credited here simply because this app couldn't exist without their free, public data. In return, BTC Ticker tries to be a good citizen of each API: requests are read-only, cached in `localStorage` before ever hitting the network again, polled on the slowest cadence that still feels live (60s–24h depending on the source), and WebSocket reconnects back off exponentially instead of hammering a dead connection.
 
 ---
 

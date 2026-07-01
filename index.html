@@ -9,7 +9,7 @@
 </head>
 <body>
 <nav id="menu">
-  <button id="menu-btn" class="icon-btn" aria-label="Select exchange" aria-haspopup="true" aria-expanded="false">
+  <button id="menu-btn" class="icon-btn" aria-label="Settings menu" aria-haspopup="true" aria-expanded="false">
     <svg width="20" height="5" viewBox="0 0 20 5" fill="none" xmlns="http://www.w3.org/2000/svg">
       <circle cx="2.5" cy="2.5" r="2.5" fill="currentColor"/>
       <circle cx="10"  cy="2.5" r="2.5" fill="currentColor"/>
@@ -22,6 +22,11 @@
     <li><button data-exchange="coinbase">Coinbase</button></li>
     <li><button data-exchange="kraken">Kraken</button></li>
     <li><button data-exchange="okx">OKX</button></li>
+    <li class="menu-heading">Display</li>
+    <li><button type="button" data-toggle="fees" aria-pressed="true">TX Fees</button></li>
+    <li><button type="button" data-toggle="fng" aria-pressed="true">F&amp;G Index</button></li>
+    <li><button type="button" data-toggle="change" aria-pressed="true">24H % Change</button></li>
+    <li><button type="button" data-toggle="cdc" aria-pressed="true">CDC Strip</button></li>
     <li><a id="dashboard-link" href="db.html">GO TO DASHBOARD</a></li>
   </ul>
 </nav>

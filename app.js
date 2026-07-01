@@ -94,6 +94,7 @@ const EXCHANGES = {
 const EXCHANGE_KEY    = 'btcticker_v1_exchange';
 const STORAGE_KEY     = 'btcticker_v1_history';
 const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
+const VISIBILITY_KEY  = 'btcticker_v1_visibility';
 const CDC_TTL_MS      = 60 * 60 * 1000;
 const SNAPSHOT_MS     = 60_000;
 const WINDOW_MS       = 24 * 60 * 60_000;
@@ -111,8 +112,23 @@ try {
   }
 } catch {}
 
+// per-metric show/hide, exposed via the settings menu; everything is visible
+// by default, and a missing/malformed stored value falls back rather than erroring
+const VISIBILITY_DEFAULTS = { fees: true, fng: true, change: true, cdc: true };
+
+function loadVisibility() {
+  try {
+    return { ...VISIBILITY_DEFAULTS, ...JSON.parse(localStorage.getItem(VISIBILITY_KEY)) };
+  } catch { return { ...VISIBILITY_DEFAULTS }; }
+}
+
+function saveVisibility(v) {
+  try { localStorage.setItem(VISIBILITY_KEY, JSON.stringify(v)); } catch {}
+}
+
 const STATE = {
   exchange: localStorage.getItem(EXCHANGE_KEY) || 'binance',
+  visibility: loadVisibility(),
   latest: 0,
   latestChange: null,
   last: 0,
@@ -166,13 +182,13 @@ function fmt(n, change) {
   const [int, dec] = n.toFixed(2).split('.');
   const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   let chgHtml = '';
-  if (change !== null && change !== undefined && !isNaN(change)) {
+  if (STATE.visibility.change && change !== null && change !== undefined && !isNaN(change)) {
     const sign = change >= 0 ? '+' : '';
     const cls  = change >= 0 ? 'pos' : 'neg';
     chgHtml = `<span class="chg ${cls}">${sign}${Math.round(change)}%</span>`;
   }
   let fngHtml = '';
-  if (STATE.fearGreed) {
+  if (STATE.visibility.fng && STATE.fearGreed) {
     const { value, classification, updateTime } = STATE.fearGreed;
     const stale = fngStale(updateTime);
     const title = stale
@@ -368,6 +384,33 @@ menuList.addEventListener('click', (e) => {
   connect(key);
 });
 
+// ── DISPLAY TOGGLES ───────────────────────────────────────
+// per-metric show/hide, exposed via the settings menu. #fees/#cdc-strip are
+// hidden via a CSS class; the F&G/% change spans are baked into fmt()'s
+// output (see the DISPLAY section above), so a re-render is enough for those.
+const feesSection = document.getElementById('fees');
+const toggleBtns  = menuList.querySelectorAll('button[data-toggle]');
+
+function applyVisibility() {
+  feesSection.classList.toggle('hidden', !STATE.visibility.fees);
+  cdcStrip.classList.toggle('hidden', !STATE.visibility.cdc);
+  toggleBtns.forEach(btn => {
+    const on = STATE.visibility[btn.dataset.toggle];
+    btn.classList.toggle('active', on);
+    btn.setAttribute('aria-pressed', String(on));
+  });
+  renderPrice();
+}
+
+menuList.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-toggle]');
+  if (!btn) return;
+  const key = btn.dataset.toggle;
+  STATE.visibility[key] = !STATE.visibility[key];
+  saveVisibility(STATE.visibility);
+  applyVisibility();
+});
+
 // ── FULLSCREEN ────────────────────────────────────────────
 const fsBtn  = document.getElementById('fullscreen-btn');
 const fsIcon = document.getElementById('fs-icon');
@@ -559,6 +602,7 @@ setInterval(fetchFees, FEES_TTL_MS);
 
 // ── INIT ──────────────────────────────────────────────────
 updateActive();
+applyVisibility();
 connect(STATE.exchange);
 initCDC();
 // paint cached fees instantly; only fetch on load if the cache is stale/absent
