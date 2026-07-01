@@ -94,10 +94,16 @@ const STORAGE_KEY     = 'btcticker_v1_history';
 const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
 const VISIBILITY_KEY  = 'btcticker_v1_visibility';
 const CDC_TTL_MS      = 60 * 60 * 1000;
-const SNAPSHOT_MS     = 60_000;
+// 5 min: cuts localStorage writes 5x versus a 1 min cadence — kinder to the
+// flash storage on a 24/7 kiosk box, and 5 min resolution is still plenty
+// dense for a 24h history window
+const SNAPSHOT_MS     = 5 * 60_000;
 const WINDOW_MS       = 24 * 60 * 60_000;
 const AGE_TICK_MS     = 1000;
-const PRICE_TICK_MS   = 500;
+// 1s: still reads as "live" on a glance at a wall-mounted display, but halves
+// the paint work of a 2/s cadence — #price is close to the largest painted
+// area on screen, which matters on low-power kiosk hardware
+const PRICE_TICK_MS   = 1000;
 const REST_CHANGE_TTL_MS = 5 * 60_000;
 
 // one-time migration from the pre-v1 unversioned keys
@@ -140,7 +146,14 @@ const STATE = {
 };
 
 // ── DOM ───────────────────────────────────────────────────
-const el        = document.getElementById('price');
+// price is split into persistent sub-elements (rather than one element
+// rebuilt via innerHTML) so each render only touches the specific text/class
+// that actually changed — matters on kiosk-class hardware where #price is
+// close to the largest painted area on the whole screen every tick
+const priceIntEl = document.getElementById('price-int');
+const priceDecEl = document.getElementById('price-dec');
+const priceChgEl = document.getElementById('price-chg');
+const priceFngEl = document.getElementById('price-fng');
 const pulse     = document.getElementById('ws-pulse');
 const label     = document.getElementById('ws-label');
 const time      = document.getElementById('ws-time');
@@ -188,25 +201,46 @@ function snapshotHistory() {
 setInterval(snapshotHistory, SNAPSHOT_MS);
 
 // ── DISPLAY ───────────────────────────────────────────────
-function fmt(n, change) {
+// updates only the sub-elements whose value actually changed, instead of
+// rebuilding the whole #price subtree from an HTML string every tick
+function renderPriceDOM(n, change) {
   const [int, dec] = n.toFixed(2).split('.');
   const intFmt = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  let chgHtml = '';
-  if (STATE.visibility.change && change !== null && change !== undefined && !isNaN(change)) {
+  if (priceIntEl.textContent !== intFmt) priceIntEl.textContent = intFmt;
+  if (priceDecEl.textContent !== dec) priceDecEl.textContent = dec;
+
+  const showChg = STATE.visibility.change && change !== null && change !== undefined && !isNaN(change);
+  priceChgEl.hidden = !showChg;
+  if (showChg) {
     const sign = change >= 0 ? '+' : '';
-    const cls  = change >= 0 ? 'pos' : 'neg';
-    chgHtml = `<span class="chg ${cls}">${sign}${Math.round(change)}%</span>`;
+    const text = `${sign}${Math.round(change)}%`;
+    if (priceChgEl.textContent !== text) priceChgEl.textContent = text;
+    priceChgEl.classList.toggle('pos', change >= 0);
+    priceChgEl.classList.toggle('neg', change < 0);
   }
-  let fngHtml = '';
-  if (STATE.visibility.fng && STATE.fearGreed) {
+
+  const showFng = STATE.visibility.fng && !!STATE.fearGreed;
+  priceFngEl.hidden = !showFng;
+  if (showFng) {
     const { value, classification, updateTime } = STATE.fearGreed;
     const stale = fngStale(updateTime);
     const title = stale
-      ? `Fear &amp; Greed: ${classification} — stale (last updated ${updateTime})`
-      : `Fear &amp; Greed: ${classification}`;
-    fngHtml = `<span class="fng${stale ? ' stale' : ''}" style="color:${fngColor(value)}" title="${title}">${value}</span>`;
+      ? `Fear & Greed: ${classification} — stale (last updated ${updateTime})`
+      : `Fear & Greed: ${classification}`;
+    const valueStr = String(value);
+    if (priceFngEl.textContent !== valueStr) priceFngEl.textContent = valueStr;
+    priceFngEl.classList.toggle('stale', stale);
+    const color = fngColor(value);
+    if (priceFngEl.style.color !== color) priceFngEl.style.color = color;
+    if (priceFngEl.title !== title) priceFngEl.title = title;
   }
-  return intFmt + `<span class="dec-wrap"><span class="ind">${fngHtml}${chgHtml}</span><span class="dec">.${dec}</span></span>`;
+}
+
+function clearPriceDOM() {
+  priceIntEl.textContent = '';
+  priceDecEl.textContent = '';
+  priceChgEl.hidden = true;
+  priceFngEl.hidden = true;
 }
 
 function setStatus(state) {
@@ -234,7 +268,7 @@ function tickPriceRender() {
   STATE.last = STATE.latest;
   if (!STATE.pending) {
     STATE.pending = true;
-    requestAnimationFrame(() => { el.innerHTML = fmt(STATE.last, STATE.latestChange); STATE.pending = false; });
+    requestAnimationFrame(() => { renderPriceDOM(STATE.last, STATE.latestChange); STATE.pending = false; });
   }
 }
 setInterval(tickPriceRender, PRICE_TICK_MS);
@@ -260,7 +294,7 @@ function fngStale(updateTime) {
 }
 
 function renderPrice() {
-  if (STATE.latest) el.innerHTML = fmt(STATE.last || STATE.latest, STATE.latestChange);
+  if (STATE.latest) renderPriceDOM(STATE.last || STATE.latest, STATE.latestChange);
 }
 
 function loadFearGreed() {
@@ -291,7 +325,7 @@ if (STATE.history.length) {
   STATE.latest = e.price;
   STATE.latestChange = e.change;
   STATE.lastUpdated = e.ts; // show the real age of the cached price, not "current"
-  el.innerHTML = fmt(STATE.latest, STATE.latestChange);
+  renderPriceDOM(STATE.latest, STATE.latestChange);
   time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
 } else {
   loadingEl.classList.add('active');
@@ -387,7 +421,7 @@ menuList.addEventListener('click', (e) => {
   STATE.exchange = key;
   try { localStorage.setItem(EXCHANGE_KEY, key); } catch {}
   STATE.latest = 0; STATE.latestChange = null; STATE.last = 0; STATE.lastUpdated = null;
-  el.innerHTML = '';
+  clearPriceDOM();
   time.textContent = '';
   loadingEl.classList.add('active');
   updateActive();
@@ -396,8 +430,8 @@ menuList.addEventListener('click', (e) => {
 
 // ── DISPLAY TOGGLES ───────────────────────────────────────
 // per-metric show/hide, exposed via the settings menu. #fees/#cdc-strip are
-// hidden via a CSS class; the F&G/% change spans are baked into fmt()'s
-// output (see the DISPLAY section above), so a re-render is enough for those.
+// hidden via a CSS class; the F&G/% change spans are handled inside
+// renderPriceDOM() (see the DISPLAY section above), so a re-render is enough.
 const feesSection  = document.getElementById('fees');
 const toggleInputs = menuList.querySelectorAll('input[data-toggle]');
 
@@ -606,10 +640,25 @@ async function fetchFees() {
 // paint on load and for sharing the reading with the dashboard
 setInterval(fetchFees, FEES_TTL_MS);
 
+// ── SCHEDULED RELOAD ──────────────────────────────────────
+// this app is built to run unattended for weeks on kiosk hardware; a
+// once-daily reload at a quiet local hour resets the JS heap and any
+// browser-level fragmentation for free, regardless of how leak-free the app
+// itself is. location.reload() naturally reschedules this on the next load.
+const DAILY_RELOAD_HOUR = 4; // 4am local time
+
+function scheduleReload() {
+  const next = new Date();
+  next.setHours(DAILY_RELOAD_HOUR, 0, 0, 0);
+  if (next <= Date.now()) next.setDate(next.getDate() + 1);
+  setTimeout(() => location.reload(), next - Date.now());
+}
+
 // ── INIT ──────────────────────────────────────────────────
 updateActive();
 applyVisibility();
 connect(STATE.exchange);
 initCDC();
+scheduleReload();
 // paint cached fees instantly; only fetch on load if the cache is stale/absent
 if (Date.now() - loadCachedFees() >= FEES_TTL_MS) fetchFees();

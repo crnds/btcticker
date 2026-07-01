@@ -71,7 +71,14 @@ mkdir -p "$HOME/.local/bin"
       echo "exec \"$BROWSER\" --kiosk \"$FILE_URL\""
       ;;
     *)
-      echo "exec \"$BROWSER\" --kiosk --incognito --disable-infobars --no-first-run \"$FILE_URL\""
+      # background sync/extensions/translate services buy nothing on a
+      # locked-down single-tab kiosk and just compete for CPU/RAM; on very
+      # low-power boxes it's also worth manually A/B testing --disable-gpu —
+      # whether software or GPU rasterization is faster depends entirely on
+      # driver quality, so it isn't safe to force one way by default here
+      echo "exec \"$BROWSER\" --kiosk --incognito --disable-infobars --no-first-run \\"
+      echo "  --disable-background-networking --disable-sync --disable-extensions \\"
+      echo "  --disable-features=Translate,TranslateUI --no-default-browser-check \"$FILE_URL\""
       ;;
   esac
 } > "$LAUNCHER"

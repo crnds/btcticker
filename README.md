@@ -40,12 +40,14 @@ Enable **Install unknown apps** in Android Settings, then open the APK to instal
 ```
 Exchange WebSocket ──► app.js (browser) ──► requestAnimationFrame ──► DOM
  live trade stream       parses price +        batches writes at
- ~100ms updates          24hr % change         2/s max
+ ~100ms updates          24hr % change         1/s max
 ```
 
-The browser connects directly to the selected exchange's public WebSocket stream. Price snapshots are saved to `localStorage` every minute and pruned to a rolling 24 hr window — the last known price renders instantly on load before the socket connects.
+The browser connects directly to the selected exchange's public WebSocket stream. Price snapshots are saved to `localStorage` every 5 minutes and pruned to a rolling 24 hr window — the last known price renders instantly on load before the socket connects.
 
 The CDC Action Zone strip reads 30 days of daily OHLC data and renders a colour-coded EMA(12)/EMA(26) crossover bar chart at the bottom of the screen.
+
+**Kiosk hygiene, tuned for weak hardware.** This app is built to run unattended for weeks on low-power kiosk boxes, so a few things are deliberately conservative: `#price` updates in place (persistent DOM nodes, only the sub-value that changed is touched) rather than being rebuilt from an HTML string on every tick, since it's close to the largest painted area on the whole screen; the render/localStorage cadences above favor fewer writes and repaints over sub-second precision; and the page reloads itself once a day at 4am local time to reset the JS heap and any browser-level memory fragmentation, regardless of how leak-free the app itself is.
 
 ---
 
