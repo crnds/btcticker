@@ -20,21 +20,25 @@ public class BootReceiver extends BroadcastReceiver {
 
         AppWidgetManager mgr = AppWidgetManager.getInstance(ctx);
 
-        restart(ctx, mgr, PriceWidgetProvider.class,      new PriceWidgetProvider());
-        restart(ctx, mgr, CdcWidgetProvider.class,        new CdcWidgetProvider());
-        restart(ctx, mgr, PriceWidgetSmallProvider.class, new PriceWidgetSmallProvider());
-        restart(ctx, mgr, CdcWidgetSmallProvider.class,   new CdcWidgetSmallProvider());
-        restart(ctx, mgr, CombinedWidgetProvider.class,     new CombinedWidgetProvider());
-        restart(ctx, mgr, MiniCombinedWidgetProvider.class, new MiniCombinedWidgetProvider());
-        restart(ctx, mgr, FearGreedWidgetProvider.class,   new FearGreedWidgetProvider());
+        restart(ctx, mgr, PriceWidgetProvider.class);
+        restart(ctx, mgr, CdcWidgetProvider.class);
+        restart(ctx, mgr, PriceWidgetSmallProvider.class);
+        restart(ctx, mgr, CdcWidgetSmallProvider.class);
+        restart(ctx, mgr, CombinedWidgetProvider.class);
+        restart(ctx, mgr, MiniCombinedWidgetProvider.class);
+        restart(ctx, mgr, FearGreedWidgetProvider.class);
     }
 
     private static void restart(Context ctx, AppWidgetManager mgr,
-                                 Class<? extends AppWidgetProvider> cls,
-                                 AppWidgetProvider provider) {
+                                 Class<? extends AppWidgetProvider> cls) {
         try {
             int[] ids = mgr.getAppWidgetIds(new ComponentName(ctx, cls));
-            if (ids.length > 0) provider.onUpdate(ctx, mgr, ids);
+            if (ids.length > 0) {
+                Intent intent = new Intent(ctx, cls);
+                intent.setAction(AppWidgetManager.ACTION_APPWIDGET_UPDATE);
+                intent.putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids);
+                ctx.sendBroadcast(intent);
+            }
         } catch (Exception e) {
             Log.e("BootReceiver", "Failed to restart " + cls.getSimpleName(), e);
         }

@@ -80,8 +80,9 @@ const EXCHANGES = {
       const d = JSON.parse(raw);
       if (d.arg?.channel !== 'tickers' || !d.data?.[0]) return null;
       const t = d.data[0];
-      const change = t.open24h
-        ? ((parseFloat(t.last) - parseFloat(t.open24h)) / parseFloat(t.open24h)) * 100
+      const open = t.open24h ? parseFloat(t.open24h) : 0;
+      const change = open !== 0
+        ? ((parseFloat(t.last) - open) / open) * 100
         : null;
       return { price: parseFloat(t.last), change };
     }
@@ -185,7 +186,7 @@ function estimateChangeFromHistory() {
   if (STATE.history.length < 2) return null;
   const oldest = STATE.history[0].price;
   const newest = STATE.history[STATE.history.length - 1].price;
-  if (!oldest || !newest) return null;
+  if (!oldest || !newest || oldest === 0) return null;
   return ((newest - oldest) / oldest) * 100;
 }
 
