@@ -31,6 +31,13 @@ body {
   justify-content: center;
   height: 100vh;
   font-family: 'Bebas Neue', sans-serif;
+  /* body never scrolls (fixed 100vh, no overflowing content), so the UI
+     chrome below uses position:absolute rather than fixed — behaviourally
+     identical here, but Chromium promotes every fixed-position element to
+     its own GPU-composited layer regardless of transforms, which measurably
+     doubled compositor layer count on this page; absolute avoids that. If a
+     future change ever makes body scrollable, these need to become fixed. */
+  overflow: hidden;
 }
 #price {
   font-size: min(30vw, 80vh);
@@ -82,10 +89,12 @@ body {
 .dec-wrap .dec     { color: rgba(255,255,255,0.5); font-size: 1em; line-height: 1; }
 
 #ws-status {
-  position: fixed;
+  position: absolute;
   bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -123,14 +132,14 @@ body {
 .icon-btn:hover { color: var(--hover); }
 
 #fullscreen-btn {
-  position: fixed;
+  position: absolute;
   top: 0;
   right: 0;
   z-index: 100;
 }
 
 #menu {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
   z-index: 100;
@@ -228,10 +237,11 @@ body {
 
 #loading {
   display: none;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
   font-family: monospace;
   font-size: min(6vw, 14vh);
   color: var(--text);
@@ -252,10 +262,9 @@ body {
 }
 
 #cdc-strip {
-  position: fixed;
+  position: absolute;
   bottom: 44px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 5vw; /* centers a fixed 90vw-wide box without a transform */
   display: flex;
   align-items: flex-start;
   gap: 5px;
@@ -294,10 +303,12 @@ body {
 
 /* mempool.space recommended fees — subtle bar centred above the price */
 #fees {
-  position: fixed;
+  position: absolute;
   top: 0;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  width: fit-content;
+  margin-inline: auto;
   max-width: calc(100vw - 24px);
   display: flex;
   align-items: stretch;
