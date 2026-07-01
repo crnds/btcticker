@@ -497,12 +497,19 @@ function deriveTiers(blocks) {
   return { high: med(0), med: med(2), low: med(5), no: med(n - 1) };
 }
 
+// display-only rounding: values >= 1 sat/vB round to a whole number, values
+// below 1 keep 2 decimals so tiny fractional fees stay legible. The stored/
+// fetched values themselves always stay fractional-precise (see deriveTiers).
+function fmtFeeRate(v) {
+  return v >= 1 ? String(Math.round(v)) : v.toFixed(2);
+}
+
 function renderFees(t) {
   if (!t) return;
   const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
   for (const [id, v] of Object.entries(cells)) {
     const e = document.getElementById(id);
-    if (e && v != null && !isNaN(v)) e.textContent = Number(v).toFixed(2);
+    if (e && v != null && !isNaN(v)) e.textContent = fmtFeeRate(Number(v));
   }
 }
 
