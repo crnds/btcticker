@@ -105,14 +105,8 @@ body {
 }
 #ws-pulse.live {
   background: var(--up);
-  animation: pulse 2s ease-in-out infinite;
 }
 #ws-pulse.reconnecting { background: var(--down); }
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
-}
 
 /* shared by the menu toggle and fullscreen toggle — both are fixed,
    icon-only, top-corner controls */
