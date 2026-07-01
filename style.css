@@ -296,27 +296,22 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 0 6px;
+  padding: 0 clamp(3px, 1.2vw, 6px);
 }
+/* fluid on both axes — min(vw, vh) tracks whichever dimension is tighter, so
+   the bar scales down on short kiosk screens just as it does on narrow ones,
+   with clamp() holding the original 20px/44px sizing as the desktop ceiling */
 .fee-label {
-  font-size: 20px;
+  font-size: clamp(9px, min(3.2vw, 3.4vh), 20px);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);
 }
 .fee-val {
-  font-size: 44px;
+  font-size: clamp(20px, min(7vw, 7.5vh), 44px);
   color: var(--accent);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-}
-
-/* keep the fee bar from colliding with neighbouring elements on narrow screens */
-@media (max-width: 600px) {
-  .fee-cell { padding: 0 3px; }
-  /* four 44px values can't physically fit a phone — hold 44px where it fits
-     (≥~520px) and scale down only on narrower screens to avoid overflow */
-  .fee-val { font-size: clamp(26px, 8.5vw, 44px); }
 }
 
 @media (prefers-reduced-motion: reduce) {

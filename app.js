@@ -498,10 +498,10 @@ function deriveTiers(blocks) {
 }
 
 // display-only rounding: values >= 1 sat/vB round to a whole number, values
-// below 1 keep 2 decimals so tiny fractional fees stay legible. The stored/
-// fetched values themselves always stay fractional-precise (see deriveTiers).
+// below 1 round to 1 decimal. The stored/fetched values themselves always
+// stay fractional-precise (see deriveTiers).
 function fmtFeeRate(v) {
-  return v >= 1 ? String(Math.round(v)) : v.toFixed(2);
+  return v >= 1 ? String(Math.round(v)) : v.toFixed(1);
 }
 
 function renderFees(t) {
