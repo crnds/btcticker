@@ -388,25 +388,21 @@ menuList.addEventListener('click', (e) => {
 // per-metric show/hide, exposed via the settings menu. #fees/#cdc-strip are
 // hidden via a CSS class; the F&G/% change spans are baked into fmt()'s
 // output (see the DISPLAY section above), so a re-render is enough for those.
-const feesSection = document.getElementById('fees');
-const toggleBtns  = menuList.querySelectorAll('button[data-toggle]');
+const feesSection  = document.getElementById('fees');
+const toggleInputs = menuList.querySelectorAll('input[data-toggle]');
 
 function applyVisibility() {
   feesSection.classList.toggle('hidden', !STATE.visibility.fees);
   cdcStrip.classList.toggle('hidden', !STATE.visibility.cdc);
-  toggleBtns.forEach(btn => {
-    const on = STATE.visibility[btn.dataset.toggle];
-    btn.classList.toggle('active', on);
-    btn.setAttribute('aria-pressed', String(on));
-  });
+  toggleInputs.forEach(input => { input.checked = STATE.visibility[input.dataset.toggle]; });
   renderPrice();
 }
 
-menuList.addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-toggle]');
-  if (!btn) return;
-  const key = btn.dataset.toggle;
-  STATE.visibility[key] = !STATE.visibility[key];
+menuList.addEventListener('change', (e) => {
+  const input = e.target.closest('input[data-toggle]');
+  if (!input) return;
+  const key = input.dataset.toggle;
+  STATE.visibility[key] = input.checked;
   saveVisibility(STATE.visibility);
   applyVisibility();
 });
