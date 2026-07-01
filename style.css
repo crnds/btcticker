@@ -101,7 +101,6 @@ body {
   user-select: none;
 }
 #ws-status::before { content: 'WS-Status:'; margin-right: 2px; }
-#ws-time { color: var(--faint2); margin-left: 4px; }
 
 #ws-pulse {
   width: 7px;

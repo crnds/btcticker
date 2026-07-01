@@ -100,7 +100,6 @@ const CDC_TTL_MS      = 60 * 60 * 1000;
 // dense for a 24h history window
 const SNAPSHOT_MS     = 5 * 60_000;
 const WINDOW_MS       = 24 * 60 * 60_000;
-const AGE_TICK_MS     = 1000;
 // 1s: still reads as "live" on a glance at a wall-mounted display, but halves
 // the paint work of a 2/s cadence — #price is close to the largest painted
 // area on screen, which matters on low-power kiosk hardware
@@ -157,7 +156,6 @@ const priceChgEl = document.getElementById('price-chg');
 const priceFngEl = document.getElementById('price-fng');
 const pulse     = document.getElementById('ws-pulse');
 const label     = document.getElementById('ws-label');
-const time      = document.getElementById('ws-time');
 const menuBtn   = document.getElementById('menu-btn');
 const menuList  = document.getElementById('menu-list');
 const loadingEl = document.getElementById('loading');
@@ -250,20 +248,6 @@ function setStatus(state) {
     : state === 'reconnecting' ? 'reconnecting…' : 'connecting…';
 }
 
-function fmtAgo(ms) {
-  const secs = Math.floor(ms / 1000);
-  if (secs < 5)     return 'just now';
-  if (secs < 60)    return secs + 's ago';
-  if (secs < 3600)  return Math.floor(secs / 60) + 'm ago';
-  return Math.floor(secs / 3600) + 'h ago';
-}
-
-function tickAge() {
-  if (!STATE.lastUpdated) return;
-  time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
-}
-setInterval(tickAge, AGE_TICK_MS);
-
 function tickPriceRender() {
   if (STATE.latest === STATE.last) return;
   STATE.last = STATE.latest;
@@ -327,7 +311,6 @@ if (STATE.history.length) {
   STATE.latestChange = e.change;
   STATE.lastUpdated = e.ts; // show the real age of the cached price, not "current"
   renderPriceDOM(STATE.latest, STATE.latestChange);
-  time.textContent = fmtAgo(Date.now() - STATE.lastUpdated);
 } else {
   loadingEl.classList.add('active');
 }
@@ -423,7 +406,6 @@ menuList.addEventListener('click', (e) => {
   try { localStorage.setItem(EXCHANGE_KEY, key); } catch {}
   STATE.latest = 0; STATE.latestChange = null; STATE.last = 0; STATE.lastUpdated = null;
   clearPriceDOM();
-  time.textContent = '';
   loadingEl.classList.add('active');
   updateActive();
   connect(key);
