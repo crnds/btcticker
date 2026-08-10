@@ -54,13 +54,23 @@
     <div class="fee-cell"><span class="fee-label">High</span><span class="fee-val" id="fee-high">–</span></div>
   </div>
 </section>
-<main id="price"><span id="price-int"></span><span class="dec-wrap"><span class="ind"><span id="price-fng" class="fng" hidden></span><span id="price-chg" class="chg" hidden></span></span><span class="dec">.<span id="price-dec"></span></span></span></main>
+<main id="price">
+  <div class="price-content">
+    <div class="price-figure"><span id="price-int"></span><span class="dec">.<span id="price-dec"></span></span></div>
+    <div class="badge-row">
+      <span id="price-fng" class="badge fng" data-label="F&amp;G" hidden></span>
+      <span id="price-chg" class="badge chg" data-label="24H" hidden></span>
+    </div>
+  </div>
+</main>
 <div id="cdc-strip" role="img" aria-label="CDC Action Zone"></div>
-<div id="ws-status">
-  <span id="ws-pulse"></span>
-  <span id="ws-label">connecting…</span>
+<div id="status-row">
+  <div id="clock"></div>
+  <div id="ws-status">
+    <span id="ws-pulse"></span>
+    <span id="ws-label">connecting…</span>
+  </div>
 </div>
-<div id="clock"></div>
 <button id="fullscreen-btn" class="icon-btn" aria-label="Toggle fullscreen">
   <svg id="fs-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M1 6V1H6M15 6V1H10M1 10V15H6M15 10V15H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>

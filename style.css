@@ -26,11 +26,21 @@
 *{ margin: 0; padding: 0; box-sizing: border-box; }
 body {
   background: var(--bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   height: 100vh;
   font-family: 'Bebas Neue', sans-serif;
+  /* the fee bar, price and CDC strip each get a reserved grid row so they
+     can't grow into each other — replaces independently vw/vh-anchored
+     absolute positioning, which had no idea the others existed. Absolutely
+     positioned overlay chrome (menu, fullscreen button, loading dots) is
+     unaffected: out-of-flow children ignore a grid parent entirely. */
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  /* query container for the cq* units below — every row is sized off this
+     box's real dimensions, not the viewport, so the price row's font-size
+     formula always reflects the space actually left over after the fee bar
+     and footer take theirs. */
+  container-type: size;
+  container-name: ticker;
   /* body never scrolls (fixed 100vh, no overflowing content), so the UI
      chrome below uses position:absolute rather than fixed — behaviourally
      identical here, but Chromium promotes every fixed-position element to
@@ -40,7 +50,28 @@ body {
   overflow: hidden;
 }
 #price {
-  font-size: min(30vw, 80vh);
+  grid-row: 2;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding-inline: clamp(10px, 3cqw, 28px);
+  /* nested container: the price figure is sized off THIS row's own box
+     (the 1fr leftover after the fee bar/footer), not the whole screen */
+  container-type: size;
+  container-name: priceRow;
+}
+.price-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 2cqh, 14px);
+  min-width: 0;
+}
+.price-figure {
+  font-size: min(26cqw, 46cqh);
   font-weight: 400;
   color: var(--text);
   letter-spacing: 0;
@@ -48,55 +79,66 @@ body {
   user-select: none;
   transform: scaleY(1.25);
   transform-origin: center center;
-  margin-bottom: 10vh;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.dec-wrap {
-  position: relative;
-  display: inline-block;
-  vertical-align: baseline;   /* decimals share the price's baseline */
-  /* sized to the decimals so the inline-block box (and the indicators'
-     bottom:100% anchor) hugs the decimals instead of a full price-em */
-  font-size: 0.38em;
-  line-height: 1;
-}
-/* Fear & Greed + 24h change, stacked just above the decimals, right-aligned */
-.dec-wrap .ind {
-  position: absolute;
-  right: 0;
-  bottom: 85%;                /* overlap slightly toward the decimals to tighten the stack */
+.price-figure .dec { color: rgba(255,255,255,0.5); font-size: 0.38em; }
+
+/* Fear & Greed + 24h change — labelled pills below the price, in normal
+   flow, instead of an absolutely-positioned stack above the decimals that
+   had nowhere to go once the CDC strip needed the same vertical space. */
+.badge-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  line-height: 1;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 2.4cqw, 16px);
+  min-height: 0;
 }
-.dec-wrap .fng,
-.dec-wrap .chg {
-  font-size: 0.6em;           /* ≈0.23 of the price (0.23 / 0.38) */
+.badge {
+  display: inline-flex;
+  align-items: center;
   font-family: 'Bebas Neue', sans-serif;
   font-weight: 400;
   line-height: 1;
+  white-space: nowrap;
+  font-size: clamp(9px, min(4.6cqw, 9cqh), 22px);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.3em 0.75em;
+}
+.badge::before {
+  content: attr(data-label);
+  font-family: monospace;
+  font-size: 0.55em;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-right: 0.4em;
 }
 /* stale F&G reading (refresh pipeline broken) — dim and underline so a frozen
    number is visibly distinct from a live one; opacity wins over the inline colour */
-.dec-wrap .fng.stale {
+.badge.fng.stale {
   opacity: 0.45;
   text-decoration: underline dotted;
   text-underline-offset: 2px;
 }
-.dec-wrap .chg.pos { color: var(--up); }
-.dec-wrap .chg.neg { color: var(--down); }
-.dec-wrap .dec     { color: rgba(255,255,255,0.5); font-size: 1em; line-height: 1; }
+.badge.chg.pos { color: var(--up); }
+.badge.chg.neg { color: var(--down); }
 
+#status-row {
+  grid-row: 4;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(10px, 3cqw, 20px) clamp(10px, 2.6cqh, 16px);
+}
 #ws-status {
-  position: absolute;
-  bottom: 16px;
-  right: 16px;
   display: flex;
   align-items: center;
   gap: 6px;
   font-family: monospace;
-  font-size: 11px;
+  font-size: clamp(7px, 1.8cqmin, 11px);
   color: var(--faint);
   user-select: none;
 }
@@ -107,6 +149,7 @@ body {
   height: 7px;
   border-radius: 50%;
   background: var(--faint);
+  flex-shrink: 0;
 }
 #ws-pulse.live {
   background: var(--up);
@@ -114,11 +157,8 @@ body {
 #ws-pulse.reconnecting { background: var(--down); }
 
 #clock {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
   font-family: monospace;
-  font-size: 14pt;
+  font-size: clamp(8px, 2.6cqmin, 14pt);
   color: var(--faint);
   font-variant-numeric: tabular-nums;
   user-select: none;
@@ -279,21 +319,21 @@ body.night-mode {
 }
 
 #cdc-strip {
-  position: absolute;
-  bottom: 44px;
-  left: 5vw; /* centers a fixed 90vw-wide box without a transform */
+  grid-row: 3;
+  position: relative;
   display: flex;
-  align-items: flex-start;
-  gap: 5px;
-  width: 90vw;
+  align-items: stretch;   /* slots stretch to fill the strip's own (responsive) height */
+  gap: 3px;
+  height: clamp(20px, 9cqh, 70px);
+  padding: 0 clamp(10px, 3cqw, 20px);
   user-select: none;
 }
 #cdc-strip::after {
   content: '';
   position: absolute;
-  left: 0;
-  right: 0;
-  top: 52px;
+  left: clamp(10px, 3cqw, 20px);
+  right: clamp(10px, 3cqw, 20px);
+  top: 50%;                /* the strip is always split evenly: bull grows up, bear grows down */
   height: 1px;
   background: var(--line);
   pointer-events: none;
@@ -302,7 +342,6 @@ body.night-mode {
   flex: 1;
   display: flex;
   flex-direction: column;
-  height: 104px;
 }
 .cdc-block {
   width: 100%;
@@ -312,57 +351,78 @@ body.night-mode {
 .cdc-block.bear  { background: var(--down); }
 .cdc-block.today { opacity: 0.4; }
 .cdc-error {
-  margin: 44px auto 0;
+  margin: 8px auto 0;
+  text-align: center;
   font-family: monospace;
   font-size: 11px;
   color: var(--faint);
 }
+/* the strip is decorative context, not the job of the page — first to fold
+   away when the container gets short */
+@container ticker (max-height: 200px) {
+  #cdc-strip { display: none; }
+}
 
-/* mempool.space recommended fees — subtle bar centred above the price */
+/* mempool.space recommended fees — subtle bar, always a single row: it
+   shrinks its own numbers/gaps rather than wrapping onto a second line */
 #fees {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  width: fit-content;
-  margin-inline: auto;
-  max-width: calc(100vw - 24px);
+  /* explicit row assignment — without this, hiding #fees (the settings
+     toggle, or the container-query fold-away below) would leave the grid to
+     auto-place the remaining items starting at row 1, shifting the price
+     into the fee bar's "auto" track and the CDC strip into the "1fr" one */
+  grid-row: 1;
   display: flex;
   align-items: stretch;
   justify-content: center;
-  --fee-gap: clamp(20px, 6vw, 64px);
+  flex-wrap: nowrap;
+  min-width: 0;
+  --fee-gap: clamp(4px, 4cqw, 40px);
   gap: calc(var(--fee-gap) / 2);
+  padding: clamp(6px, 2.2cqh, 16px) clamp(8px, 3cqw, 20px) 0;
   font-family: monospace;
   user-select: none;
-  z-index: 90;
 }
 .fee-group {
   display: flex;
   gap: var(--fee-gap);
   border-left: 1px solid var(--border);
   padding-left: calc(var(--fee-gap) / 2);
+  min-width: 0;
 }
 .fee-cell {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0;
-  padding: 0 clamp(3px, 1.2vw, 6px);
+  padding: 0 clamp(1px, 1cqw, 6px);
+  min-width: 0;
 }
-/* fluid on both axes — min(vw, vh) tracks whichever dimension is tighter, so
-   the bar scales down on short kiosk screens just as it does on narrow ones,
-   with clamp() holding the original 20px/44px sizing as the desktop ceiling */
+/* fluid on both axes — min(cqw, cqh) tracks whichever dimension of the
+   ticker's own box is tighter, and the floor is low enough that the bar
+   never needs to wrap to fit */
 .fee-label {
-  font-size: clamp(9px, min(3.2vw, 3.4vh), 20px);
+  font-size: clamp(7px, min(2.4cqw, 2.1cqh), 15px);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
 }
 .fee-val {
-  font-size: clamp(20px, min(7vw, 7.5vh), 44px);
+  font-size: clamp(11px, min(5.4cqw, 5.4cqh), 32px);
   color: var(--accent);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* height squeeze, tier 1: labels go first, numbers stay */
+@container ticker (max-height: 160px) {
+  .fee-label { display: none; }
+  .fee-cell { padding-top: 2px; }
+}
+/* height squeeze, tier 2: the whole fee bar folds away — price + badges +
+   clock/status is the floor */
+@container ticker (max-height: 120px) {
+  #fees { display: none; }
 }
 
 /* per-metric show/hide, toggled from the settings menu */

@@ -424,6 +424,10 @@ function applyVisibility() {
   toggleInputs.forEach(input => { input.checked = STATE.visibility[input.dataset.toggle]; });
   renderPrice();
   updateNightMode();
+  // the strip's bar heights are baked from its clientHeight at render time;
+  // if it was hidden (clientHeight 0) when that last happened, repaint now
+  // that it's visible again rather than waiting for the next hourly refresh
+  if (STATE.visibility.cdc && lastCDCBlocks) renderCDC(lastCDCBlocks);
 }
 
 menuList.addEventListener('change', (e) => {
@@ -525,25 +529,35 @@ async function fetchCDCBlocks() {
   }
 }
 
+// bars grow from a shared midline (bull up, bear down) sized off the strip's
+// *actual* rendered height rather than a fixed pixel baseline, so they stay
+// proportional whatever height the container-query layout gives the strip
+let lastCDCBlocks = null;
+
 function renderCDC(blocks) {
-  if (!blocks) {
+  if (blocks) lastCDCBlocks = blocks;
+  if (!blocks && !lastCDCBlocks) {
     // keep previously rendered blocks; only show the error when there's nothing
     if (!cdcStrip.childElementCount) cdcStrip.innerHTML = '<span class="cdc-error">CDC unavailable</span>';
     return;
   }
-  const diffs = blocks.map(b => b.diff);
+  const useBlocks = blocks || lastCDCBlocks;
+  const diffs = useBlocks.map(b => b.diff);
   const minD  = Math.min(...diffs);
   const maxD  = Math.max(...diffs);
   const range = maxD - minD || 1;
-  const MIN_H = 4, MAX_H = 52;
-  cdcStrip.innerHTML = blocks.map(b => {
+  // MAX_H is half the strip's height (the midline sits dead centre); MIN_H
+  // keeps the same ~8% floor the original fixed 4px/52px pairing had
+  const MAX_H = Math.max(2, cdcStrip.clientHeight / 2);
+  const MIN_H = Math.max(1, MAX_H * 0.08);
+  cdcStrip.innerHTML = useBlocks.map(b => {
     const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
     const mt = b.bull ? (MAX_H - h) : MAX_H;
     return `<div class="cdc-slot"><div class="cdc-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
   }).join('');
-  const bullCount = blocks.filter(b => b.bull).length;
+  const bullCount = useBlocks.filter(b => b.bull).length;
   cdcStrip.setAttribute('aria-label',
-    `CDC Action Zone: ${bullCount} of ${blocks.length} days bullish`);
+    `CDC Action Zone: ${bullCount} of ${useBlocks.length} days bullish`);
 }
 
 async function initCDC() {
@@ -551,6 +565,15 @@ async function initCDC() {
 }
 
 setInterval(initCDC, CDC_TTL_MS);
+
+// window resize (or a container-query breakpoint kicking in) changes the
+// strip's actual height without changing the underlying data — repaint the
+// existing blocks at the new height instead of waiting for the next fetch
+let cdcResizeTimer = null;
+window.addEventListener('resize', () => {
+  clearTimeout(cdcResizeTimer);
+  cdcResizeTimer = setTimeout(() => { if (lastCDCBlocks) renderCDC(lastCDCBlocks); }, 150);
+});
 
 // ── MEMPOOL FEES ──────────────────────────────────────────
 // Fee rates (sat/vB) for four priority tiers, derived from mempool.space's
