@@ -113,6 +113,27 @@ body {
 }
 #ws-pulse.reconnecting { background: var(--down); }
 
+#clock {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  font-family: monospace;
+  font-size: 14pt;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+/* Night Mode: collapses every colour to a dim red-only luminance mapping
+   (see the feColorMatrix def in index.html) — blue/green channels are zeroed
+   entirely rather than just desaturated, matching red-light night-vision
+   practice so the display doesn't disturb sleep in a dark room. Applied to
+   body (not html) so it shares the same box as the absolute-positioned
+   children it becomes the containing block for. */
+body.night-mode {
+  filter: url(#night-red-filter);
+}
+
 /* shared by the menu toggle and fullscreen toggle — both are fixed,
    icon-only, top-corner controls */
 .icon-btn {

@@ -118,7 +118,7 @@ try {
 
 // per-metric show/hide, exposed via the settings menu; everything is visible
 // by default, and a missing/malformed stored value falls back rather than erroring
-const VISIBILITY_DEFAULTS = { fees: true, fng: true, change: true, cdc: true };
+const VISIBILITY_DEFAULTS = { fees: true, fng: true, change: true, cdc: true, nightSchedule: false, nightForce: false };
 
 function loadVisibility() {
   try {
@@ -423,6 +423,7 @@ function applyVisibility() {
   cdcStrip.classList.toggle('hidden', !STATE.visibility.cdc);
   toggleInputs.forEach(input => { input.checked = STATE.visibility[input.dataset.toggle]; });
   renderPrice();
+  updateNightMode();
 }
 
 menuList.addEventListener('change', (e) => {
@@ -622,6 +623,41 @@ async function fetchFees() {
 // the interval always hits the network — the cache is only for the instant
 // paint on load and for sharing the reading with the dashboard
 setInterval(fetchFees, FEES_TTL_MS);
+
+// ── CLOCK ─────────────────────────────────────────────────
+// bottom-left wall clock, fixed to Bangkok time regardless of the kiosk's
+// local timezone/locale settings; also drives the Night Mode schedule below
+// since both need the same "what hour is it in Bangkok right now" answer
+const clockEl = document.getElementById('clock');
+const clockFmt = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', hour12: false
+});
+
+function bangkokTimeParts() {
+  const parts = clockFmt.formatToParts(new Date());
+  const get = t => parts.find(p => p.type === t).value;
+  return { hh: get('hour'), mm: get('minute') };
+}
+
+// 23:00–08:00 Bangkok time, wrapping past midnight
+function isNightHour(h) {
+  return h >= 23 || h < 8;
+}
+
+function updateNightMode() {
+  const { hh } = bangkokTimeParts();
+  const active = STATE.visibility.nightForce ||
+    (STATE.visibility.nightSchedule && isNightHour(parseInt(hh, 10)));
+  document.body.classList.toggle('night-mode', active);
+}
+
+function tickClock() {
+  const { hh, mm } = bangkokTimeParts();
+  clockEl.textContent = `${hh}:${mm}`;
+  updateNightMode();
+}
+setInterval(tickClock, 1000);
+tickClock();
 
 // ── SCHEDULED RELOAD ──────────────────────────────────────
 // this app is built to run unattended for weeks on kiosk hardware; a

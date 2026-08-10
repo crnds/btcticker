@@ -27,9 +27,21 @@
     <li><label class="menu-toggle"><input type="checkbox" data-toggle="fng" checked> F&amp;G Index</label></li>
     <li><label class="menu-toggle"><input type="checkbox" data-toggle="change" checked> 24H % Change</label></li>
     <li><label class="menu-toggle"><input type="checkbox" data-toggle="cdc" checked> CDC Strip</label></li>
+    <li class="menu-heading">Night Mode</li>
+    <li><label class="menu-toggle"><input type="checkbox" data-toggle="nightSchedule"> Schedule 23:00–08:00</label></li>
+    <li><label class="menu-toggle"><input type="checkbox" data-toggle="nightForce"> Force Night Mode</label></li>
     <li><a id="dashboard-link" href="db.html">GO TO DASHBOARD</a></li>
   </ul>
 </nav>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <filter id="night-red-filter" color-interpolation-filters="sRGB">
+    <feColorMatrix type="matrix" values="
+      0.09 0.18 0.03 0 0
+      0    0    0    0 0
+      0    0    0    0 0
+      0    0    0    1 0"/>
+  </filter>
+</svg>
 <div id="loading" role="status" aria-live="polite"><span class="d">·</span><span class="d">·</span><span class="d">·</span></div>
 <section id="fees" aria-label="Recommended Bitcoin transaction fees in sat/vB">
   <div class="fee-cell">
@@ -48,6 +60,7 @@
   <span id="ws-pulse"></span>
   <span id="ws-label">connecting…</span>
 </div>
+<div id="clock"></div>
 <button id="fullscreen-btn" class="icon-btn" aria-label="Toggle fullscreen">
   <svg id="fs-icon" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M1 6V1H6M15 6V1H10M1 10V15H6M15 10V15H10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
