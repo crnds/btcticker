@@ -5,7 +5,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>BTC/USDT</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>₿</text></svg>">
+<!-- preloaded ahead of style.css: the @font-face inside it isn't discoverable
+     until the CSS has been fetched AND parsed, a serial round trip that would
+     otherwise delay the price — the entire point of the page — on a cold
+     cache. crossorigin is required even same-origin: font fetches are always
+     CORS-mode, and a preload without it fetches the file twice. -->
+<link rel="preload" href="assets/bebas-neue-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
+<!-- mempool.space is a real cross-origin fetch, on load and every 60s -->
+<link rel="preconnect" href="https://mempool.space" crossorigin>
+<!-- DNS only, not preconnect: Chrome doesn't pool WebSocket connections with
+     the HTTP connection pool, so a preconnected socket can't be adopted by the
+     WS handshake — only the DNS lookup is shared. Binance only: it's the
+     default exchange: a lookup for any of the other four is dead weight. -->
+<link rel="dns-prefetch" href="//stream.binance.com">
 </head>
 <body>
 <header id="topbar">
@@ -82,8 +95,13 @@
     <span id="ws-label">connecting…</span>
   </div>
 </div>
-<script src="data/cdc.js"></script>
-<script src="data/fng.js"></script>
-<script src="app.js"></script>
+<!-- shared.js must load first and must stay a plain classic script — see its
+     own header comment for why. defer on all four preserves execution order
+     (data/cdc.js and data/fng.js still set their window globals before app.js
+     reads them), so first paint no longer waits on the script fetches. -->
+<script src="shared.js" defer></script>
+<script src="data/cdc.js" defer></script>
+<script src="data/fng.js" defer></script>
+<script src="app.js" defer></script>
 </body>
 </html>

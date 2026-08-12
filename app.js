@@ -1,19 +1,7 @@
-// ── NETWORK ───────────────────────────────────────────────
-// shared fetch-with-timeout for the exchange/CDC/fees REST calls; callers
-// still wrap it in try/catch since a timed-out or malformed response should
-// fail soft, not throw uncaught
-async function fetchJSON(url, timeoutMs = 8000) {
-  const ctrl = new AbortController();
-  const tid  = setTimeout(() => ctrl.abort(), timeoutMs);
-  try {
-    const r = await fetch(url, { signal: ctrl.signal });
-    return await r.json();
-  } finally {
-    clearTimeout(tid);
-  }
-}
-
 // ── EXCHANGE CONFIGS ──────────────────────────────────────
+// fetch-with-timeout, storage keys, F&G ramp/staleness, fee tiers and CDC bar
+// scaling live in shared.js (window.BTC) — the dashboard (db.html) shares all
+// of it. See shared.js's header comment for why it's a classic script.
 const EXCHANGES = {
   binance: {
     label: 'Binance',
@@ -90,26 +78,23 @@ const EXCHANGES = {
 };
 
 // ── STATE ─────────────────────────────────────────────────
-const EXCHANGE_KEY    = 'btcticker_v1_exchange';
-const STORAGE_KEY     = 'btcticker_v1_history';
-const CDC_STORAGE_KEY = 'btcticker_v1_cdc';
-const VISIBILITY_KEY  = 'btcticker_v1_visibility';
+const CDC_STORAGE_KEY = BTC.keys.cdc;
 const CDC_TTL_MS      = 60 * 60 * 1000;
 // 5 min: cuts localStorage writes 5x versus a 1 min cadence — kinder to the
 // flash storage on a 24/7 kiosk box, and 5 min resolution is still plenty
 // dense for a 24h history window
 const SNAPSHOT_MS     = 5 * 60_000;
-const WINDOW_MS       = 24 * 60 * 60_000;
 // 1s: still reads as "live" on a glance at a wall-mounted display, but halves
 // the paint work of a 2/s cadence — #price is close to the largest painted
 // area on screen, which matters on low-power kiosk hardware
 const PRICE_TICK_MS   = 1000;
 const REST_CHANGE_TTL_MS = 5 * 60_000;
 
-// one-time migration from the pre-v1 unversioned keys
+// one-time migration from the pre-v1 unversioned keys — the ticker owns this;
+// the dashboard just falls back to reading the legacy key (see BTC.history.load)
 try {
-  for (const [oldKey, newKey] of [['btcticker_exchange', EXCHANGE_KEY],
-                                  ['btcticker_history',  STORAGE_KEY]]) {
+  for (const [oldKey, newKey] of [[BTC.keys.exchangeLegacy, BTC.keys.exchange],
+                                  [BTC.keys.historyLegacy,  BTC.keys.history]]) {
     const v = localStorage.getItem(oldKey);
     if (v !== null && localStorage.getItem(newKey) === null) localStorage.setItem(newKey, v);
     localStorage.removeItem(oldKey);
@@ -122,16 +107,16 @@ const VISIBILITY_DEFAULTS = { fees: true, fng: true, change: true, cdc: true, ni
 
 function loadVisibility() {
   try {
-    return { ...VISIBILITY_DEFAULTS, ...JSON.parse(localStorage.getItem(VISIBILITY_KEY)) };
+    return { ...VISIBILITY_DEFAULTS, ...JSON.parse(localStorage.getItem(BTC.keys.visibility)) };
   } catch { return { ...VISIBILITY_DEFAULTS }; }
 }
 
 function saveVisibility(v) {
-  try { localStorage.setItem(VISIBILITY_KEY, JSON.stringify(v)); } catch {}
+  try { localStorage.setItem(BTC.keys.visibility, JSON.stringify(v)); } catch {}
 }
 
 const STATE = {
-  exchange: localStorage.getItem(EXCHANGE_KEY) || 'binance',
+  exchange: localStorage.getItem(BTC.keys.exchange) || 'binance',
   visibility: loadVisibility(),
   latest: 0,
   latestChange: null,
@@ -154,6 +139,10 @@ const priceIntEl = document.getElementById('price-int');
 const priceDecEl = document.getElementById('price-dec');
 const priceChgEl = document.getElementById('price-chg');
 const priceFngEl = document.getElementById('price-fng');
+// el.style.color reads back serialised ("rgb(255, 23, 68)"), never as the hex
+// we wrote — comparing against the readback always fails, so track what we
+// last wrote instead (see renderPriceDOM below)
+let lastFngColor = '';
 const pulse     = document.getElementById('ws-pulse');
 const label     = document.getElementById('ws-label');
 const menuBtn   = document.getElementById('menu-btn');
@@ -161,20 +150,11 @@ const menuList  = document.getElementById('menu-list');
 const loadingEl = document.getElementById('loading');
 
 // ── LOCALSTORAGE HISTORY ──────────────────────────────────
-function loadHistory() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const cutoff = Date.now() - WINDOW_MS;
-    return JSON.parse(raw).filter(e => e.ts >= cutoff);
-  } catch { return []; }
-}
-
-function saveHistory(h) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(h)); } catch {}
-}
-
-STATE.history = loadHistory();
+// load/save + the corrupt-entry validation live in shared.js (BTC.history) —
+// the boot render below calls renderPriceDOM() -> price.toFixed(2) at module
+// top level, so a bad entry there would strand the kiosk before connect(),
+// applyVisibility() and scheduleReload() ever ran
+STATE.history = BTC.history.load();
 
 // best-effort 24h % change from our own rolling snapshots — used by exchanges
 // whose ticker doesn't include a change figure (currently just Bitstamp).
@@ -194,8 +174,8 @@ function snapshotHistory() {
   if (!STATE.latest || !STATE.lastUpdated || Date.now() - STATE.lastUpdated >= SNAPSHOT_MS) return;
   const now = Date.now();
   STATE.history.push({ ts: now, price: STATE.latest, change: STATE.latestChange });
-  STATE.history = STATE.history.filter(e => e.ts >= now - WINDOW_MS);
-  saveHistory(STATE.history);
+  STATE.history = STATE.history.filter(e => e.ts >= now - BTC.history.WINDOW_MS);
+  BTC.history.save(STATE.history);
 }
 setInterval(snapshotHistory, SNAPSHOT_MS);
 
@@ -222,15 +202,15 @@ function renderPriceDOM(n, change) {
   priceFngEl.hidden = !showFng;
   if (showFng) {
     const { value, classification, updateTime } = STATE.fearGreed;
-    const stale = fngStale(updateTime);
+    const stale = BTC.fng.isStale(updateTime);
     const title = stale
       ? `Fear & Greed: ${classification} — stale (last updated ${updateTime})`
       : `Fear & Greed: ${classification}`;
     const valueStr = String(value);
     if (priceFngEl.textContent !== valueStr) priceFngEl.textContent = valueStr;
     priceFngEl.classList.toggle('stale', stale);
-    const color = fngColor(value);
-    if (priceFngEl.style.color !== color) priceFngEl.style.color = color;
+    const color = BTC.fng.colorFor(value);
+    if (color !== lastFngColor) { priceFngEl.style.color = color; lastFngColor = color; }
     if (priceFngEl.title !== title) priceFngEl.title = title;
   }
 }
@@ -264,19 +244,10 @@ setInterval(tickPriceRender, PRICE_TICK_MS);
 // it's never fetched from the client. CMC's index moves intraday, hence the
 // 6h cadence rather than daily. Shown above the 24h change, beside the price
 // decimals. Mirrors the CDC strip's file + localStorage caching.
-const FNG_STORAGE_KEY = 'btcticker_v1_fng';
+const FNG_STORAGE_KEY = BTC.keys.fng;
 const FNG_TTL_MS      = 60 * 60 * 1000;               // re-read the data file hourly
-// CMC refreshes every 6h; a reading older than this means the refresh pipeline
-// is broken (e.g. the CMC_API_KEY secret expired) and we're serving a stale number.
-const FNG_STALE_MS    = 2 * 24 * 60 * 60 * 1000;      // 48h
-// quintile bands matching the widget's arc: fear → greed
-const FNG_COLORS = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
-function fngColor(v) { return FNG_COLORS[Math.min(Math.floor(v / 20), 4)]; }
-// true once the reading is older than FNG_STALE_MS (unparseable time → not stale)
-function fngStale(updateTime) {
-  const t = Date.parse(updateTime);
-  return !isNaN(t) && (Date.now() - t) > FNG_STALE_MS;
-}
+// colour ramp + staleness threshold/check live in shared.js (BTC.fng) — the
+// dashboard's gauge uses the identical ramp and the identical 48h threshold
 
 function renderPrice() {
   if (STATE.latest) renderPriceDOM(STATE.last || STATE.latest, STATE.latestChange);
@@ -304,20 +275,36 @@ function loadFearGreed() {
 
 loadFearGreed();
 
-// show last known price on load, or loading animation if no history
-if (STATE.history.length) {
-  const e = STATE.history[STATE.history.length - 1];
-  STATE.latest = e.price;
-  STATE.latestChange = e.change;
-  STATE.lastUpdated = e.ts; // show the real age of the cached price, not "current"
-  renderPriceDOM(STATE.latest, STATE.latestChange);
-} else {
+// show last known price on load, or loading animation if no history.
+// guarded: BTC.history.load() already validates price/ts, but nothing about
+// painting a cached price is worth losing the live connection over — a throw
+// here at module top level would skip every init step below it (connect(),
+// applyVisibility(), scheduleReload()), stranding the kiosk
+try {
+  if (STATE.history.length) {
+    const e = STATE.history[STATE.history.length - 1];
+    STATE.latest = e.price;
+    STATE.latestChange = e.change;
+    STATE.lastUpdated = e.ts; // show the real age of the cached price, not "current"
+    renderPriceDOM(STATE.latest, STATE.latestChange);
+  } else {
+    loadingEl.classList.add('active');
+  }
+} catch {
   loadingEl.classList.add('active');
 }
 
 // ── WEBSOCKET ─────────────────────────────────────────────
 function connect(key) {
-  if (STATE.ws) { STATE.ws.onclose = null; STATE.ws.onmessage = null; STATE.ws.close(); STATE.ws = null; }
+  // null every handler, not just onclose/onmessage: the guards below assume a
+  // socket we've walked away from is fully detached. (close() during CONNECTING
+  // fails the connection per spec, so onopen can't fire on it — but don't rely
+  // on that alone.)
+  if (STATE.ws) {
+    STATE.ws.onopen = STATE.ws.onerror = STATE.ws.onclose = STATE.ws.onmessage = null;
+    STATE.ws.close();
+    STATE.ws = null;
+  }
   clearTimeout(STATE.reconnectTimer);
   setStatus('connecting');
 
@@ -326,12 +313,19 @@ function connect(key) {
   STATE.ws = ws;
 
   ws.onopen = async () => {
+    if (STATE.ws !== ws) return; // same stale-socket guard onclose has, below
     STATE.retryMs = 1000;
     setStatus('live');
     if (exchange.subscribe) exchange.subscribe(ws);
     if (exchange.init) {
-      const { change } = await exchange.init();
-      if (change !== null && !isNaN(change)) STATE.latestChange = change;
+      // await means the exchange can be switched out from under us mid-flight;
+      // re-check before writing, and swallow a failed lookup — a broken 24h
+      // change fetch must not become an unhandled rejection *and* skip initCDC()
+      try {
+        const { change } = await exchange.init();
+        if (STATE.ws !== ws) return;
+        if (change !== null && !isNaN(change)) STATE.latestChange = change;
+      } catch {}
     }
     initCDC();
   };
@@ -346,7 +340,11 @@ function connect(key) {
   };
 
   ws.onmessage = (e) => {
-    const result = exchange.parse(e.data);
+    // every parse() does a bare JSON.parse — a non-JSON frame (an OKX "pong",
+    // a proxy's HTML error body, a truncated payload) must fail soft here
+    // rather than throwing out of the event handler
+    let result;
+    try { result = exchange.parse(e.data); } catch { return; }
     if (!result || !result.price) return;
     STATE.latest = result.price;
     if (result.change !== null && !isNaN(result.change)) STATE.latestChange = result.change;
@@ -355,7 +353,7 @@ function connect(key) {
 
     if (!STATE.history.length) {
       STATE.history.push({ ts: Date.now(), price: STATE.latest, change: STATE.latestChange });
-      saveHistory(STATE.history);
+      BTC.history.save(STATE.history);
     }
   };
 }
@@ -363,12 +361,18 @@ function connect(key) {
 // Bitstamp's % change comes from a one-off REST call, not the trade stream —
 // refresh it periodically so it doesn't go stale on a long-running kiosk
 async function refreshRestChange() {
-  const exchange = EXCHANGES[STATE.exchange];
+  const key = STATE.exchange;
+  const exchange = EXCHANGES[key];
   if (!exchange.init || !STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) return;
-  const { change } = await exchange.init();
-  if (change !== null && !isNaN(change)) STATE.latestChange = change;
+  try {
+    const { change } = await exchange.init();
+    if (STATE.exchange !== key) return; // exchange switched while awaiting
+    if (change !== null && !isNaN(change)) STATE.latestChange = change;
+  } catch {}
 }
-setInterval(refreshRestChange, REST_CHANGE_TTL_MS);
+// setInterval discards the returned promise, so anything that escaped the
+// internal try above would otherwise surface as an unhandled rejection
+setInterval(() => { refreshRestChange().catch(() => {}); }, REST_CHANGE_TTL_MS);
 
 // ── MENU ──────────────────────────────────────────────────
 function updateActive() {
@@ -382,8 +386,25 @@ function closeMenu() {
   menuBtn.setAttribute('aria-expanded', 'false');
 }
 
+// #fees and #cdc-strip fold away under the container queries in style.css
+// when the viewport gets short (@container ticker max-height:120px/200px).
+// Their checkboxes can't override that — the CQ rule wins over .hidden once
+// .hidden is removed — so unchecking one back off in the menu silently does
+// nothing there; reflect reality instead of offering a control with no
+// effect. Reading computed style keeps style.css the single source of the
+// thresholds, so they can't drift out of sync with a duplicated number here.
+function refreshToggleAvailability() {
+  for (const [key, el] of [['fees', feesSection], ['cdc', cdcStrip]]) {
+    const input = menuList.querySelector(`input[data-toggle="${key}"]`);
+    const folded = STATE.visibility[key] && getComputedStyle(el).display === 'none';
+    input.disabled = folded;
+    input.closest('.menu-toggle').title = folded ? 'Hidden automatically — not enough vertical space' : '';
+  }
+}
+
 function openMenu() {
   updateActive();
+  refreshToggleAvailability();
   menuList.classList.add('open');
   menuBtn.setAttribute('aria-expanded', 'true');
 }
@@ -403,7 +424,7 @@ menuList.addEventListener('click', (e) => {
   closeMenu();
   if (key === STATE.exchange) return;
   STATE.exchange = key;
-  try { localStorage.setItem(EXCHANGE_KEY, key); } catch {}
+  try { localStorage.setItem(BTC.keys.exchange, key); } catch {}
   STATE.latest = 0; STATE.latestChange = null; STATE.last = 0; STATE.lastUpdated = null;
   clearPriceDOM();
   loadingEl.classList.add('active');
@@ -424,10 +445,10 @@ function applyVisibility() {
   toggleInputs.forEach(input => { input.checked = STATE.visibility[input.dataset.toggle]; });
   renderPrice();
   updateNightMode();
-  // the strip's bar heights are baked from its clientHeight at render time;
-  // if it was hidden (clientHeight 0) when that last happened, repaint now
-  // that it's visible again rather than waiting for the next hourly refresh
-  if (STATE.visibility.cdc && lastCDCBlocks) renderCDC(lastCDCBlocks);
+  // un-hiding #cdc-strip is itself a height change (0 -> its real height),
+  // which the ResizeObserver set up below already repaints on its own — no
+  // need to force one here, and doing so would mean a synchronous layout read
+  // (clientHeight) right after the class toggles above
 }
 
 menuList.addEventListener('change', (e) => {
@@ -478,22 +499,17 @@ document.addEventListener('keydown', (e) => {
 
 document.addEventListener('fullscreenchange',       onFullscreenChange);
 document.addEventListener('webkitfullscreenchange', onFullscreenChange);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) initCDC(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) return;
+  initCDC();
+  tickClock(); // the minute-aligned timer may have been throttled while hidden
+  // repaint from the shared cache first (the dashboard writes the same key),
+  // and only hit the network if that reading has aged out — same rule as boot
+  if (Date.now() - loadCachedFees() >= BTC.fees.TTL_MS) fetchFees();
+});
 
 // ── CDC ACTION ZONE ───────────────────────────────────────
 const cdcStrip = document.getElementById('cdc-strip');
-
-function calcEMA(closes, period) {
-  const k   = 2 / (period + 1);
-  const out = new Array(closes.length).fill(null);
-  let seed  = 0;
-  for (let i = 0; i < period; i++) seed += closes[i];
-  out[period - 1] = seed / period;
-  for (let i = period; i < closes.length; i++) {
-    out[i] = closes[i] * k + out[i - 1] * (1 - k);
-  }
-  return out;
-}
 
 async function fetchCDCBlocks() {
   // Tier 1: localStorage (fresh within 1 hour)
@@ -502,37 +518,32 @@ async function fetchCDCBlocks() {
     if (cached && Date.now() - cached.ts < CDC_TTL_MS && cached.blocks.length === 30 && cached.blocks[0]?.diff != null) return cached.blocks;
   } catch {}
 
-  // Tier 2: local data file (data/cdc.js sets window.LOCAL_CDC)
+  // Tier 2: local data file (data/cdc.js sets window.LOCAL_CDC). This is the
+  // only tier that ever actually runs — data/cdc.js is always bundled and
+  // loaded, so it always satisfies the check below. There used to be a
+  // Kraken REST fallback here, computing its own EMA; it never ran (this
+  // tier always returns first) and has been removed along with its calcEMA().
+  // A missing/malformed data file falls through to renderCDC()'s "CDC
+  // unavailable" state (or keeps whatever was last rendered).
   if (window.LOCAL_CDC?.blocks?.length === 30 && window.LOCAL_CDC.blocks[0]?.diff != null) {
     try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks: window.LOCAL_CDC.blocks })); } catch {}
     return window.LOCAL_CDC.blocks;
   }
 
-  // Tier 3: Kraken REST API (interval=1440 = 1 day)
-  try {
-    const json    = await fetchJSON('https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=1440');
-    const result  = json.result;
-    const pairKey = Object.keys(result).find(k => k !== 'last');
-    const closes  = result[pairKey].slice(-100).map(c => parseFloat(c[4]));
-    if (closes.length < 30 + 26) return null; // need 30 blocks + EMA26 warmup
-    const ema12   = calcEMA(closes, 12);
-    const ema26   = calcEMA(closes, 26);
-
-    const blocks = [];
-    for (let i = closes.length - 30; i < closes.length; i++) {
-      blocks.push({ bull: ema12[i] > ema26[i], today: i === closes.length - 1, diff: Math.abs(ema12[i] - ema26[i]) });
-    }
-    try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks })); } catch {}
-    return blocks;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 // bars grow from a shared midline (bull up, bear down) sized off the strip's
 // *actual* rendered height rather than a fixed pixel baseline, so they stay
 // proportional whatever height the container-query layout gives the strip
 let lastCDCBlocks = null;
+let lastCDCSignature = '';
+// kept in sync by the ResizeObserver below; renderCDC() reads this instead of
+// cdcStrip.clientHeight so it never forces a synchronous layout itself, and
+// so it repaints on ANY height change (a container-query fold triggered by
+// the fee bar growing a digit, a topbar reflow, un-hiding the strip) rather
+// than only on a window resize, which a debounced 'resize' listener missed
+let cdcHeight = 0;
 
 function renderCDC(blocks) {
   if (blocks) lastCDCBlocks = blocks;
@@ -542,16 +553,26 @@ function renderCDC(blocks) {
     return;
   }
   const useBlocks = blocks || lastCDCBlocks;
-  const diffs = useBlocks.map(b => b.diff);
-  const minD  = Math.min(...diffs);
-  const maxD  = Math.max(...diffs);
-  const range = maxD - minD || 1;
-  // MAX_H is half the strip's height (the midline sits dead centre); MIN_H
-  // keeps the same ~8% floor the original fixed 4px/52px pairing had
-  const MAX_H = Math.max(2, cdcStrip.clientHeight / 2);
-  const MIN_H = Math.max(1, MAX_H * 0.08);
-  cdcStrip.innerHTML = useBlocks.map(b => {
-    const h  = Math.round(MIN_H + ((b.diff - minD) / range) * (MAX_H - MIN_H));
+  // MAX_H is half the strip's height (the midline sits dead centre).
+  // clientHeight is only the first-call fallback, before the observer below
+  // has delivered its first measurement.
+  const MAX_H = Math.max(2, (cdcHeight || cdcStrip.clientHeight) / 2);
+
+  // The hourly initCDC() re-render (below) can never produce different output
+  // while data/cdc.js is bundled — fetchCDCBlocks() tier 2 always returns the
+  // same frozen window.LOCAL_CDC — and neither can a resize that lands on an
+  // unchanged height. Skip the 30-slot (60-element) innerHTML rebuild when
+  // nothing that affects the render actually changed; MAX_H must be part of
+  // the signature or resizes would stop repainting.
+  const signature = MAX_H + '|' + useBlocks.map(b => `${b.bull ? 1 : 0}${b.today ? 1 : 0}${b.diff}`).join(',');
+  if (signature === lastCDCSignature) return;
+  lastCDCSignature = signature;
+
+  // BTC.cdc.scale (shared.js) normalises |EMA12-EMA26| into a 0.08-1 fraction
+  // of the half-height — the same formula the dashboard's CSS-percent strip
+  // uses, so the two can no longer disagree about what a bar height means
+  cdcStrip.innerHTML = BTC.cdc.scale(useBlocks).map(b => {
+    const h  = Math.round(b.frac * MAX_H);
     const mt = b.bull ? (MAX_H - h) : MAX_H;
     return `<div class="cdc-slot"><div class="cdc-block ${b.bull ? 'bull' : 'bear'}${b.today ? ' today' : ''}" style="height:${h}px;margin-top:${mt}px"></div></div>`;
   }).join('');
@@ -564,33 +585,33 @@ async function initCDC() {
   renderCDC(await fetchCDCBlocks());
 }
 
+// kept even though the bundled data/cdc.js never changes within a page's
+// lifetime — it's the only path by which a data-file refresh or a future
+// Kraken fallback could ever land, and the signature check above makes a
+// same-data tick nearly free (one localStorage read + JSON.parse, hourly)
 setInterval(initCDC, CDC_TTL_MS);
 
-// window resize (or a container-query breakpoint kicking in) changes the
-// strip's actual height without changing the underlying data — repaint the
-// existing blocks at the new height instead of waiting for the next fetch
-let cdcResizeTimer = null;
-window.addEventListener('resize', () => {
-  clearTimeout(cdcResizeTimer);
-  cdcResizeTimer = setTimeout(() => { if (lastCDCBlocks) renderCDC(lastCDCBlocks); }, 150);
-});
+// #cdc-strip has no block padding, so contentRect.height === clientHeight.
+// Fires once on observe() with the initial measurement, and again on any
+// later height change — including ones a 'resize' listener can't see, like
+// crossing a container-query boundary or un-hiding the strip from the menu.
+// No feedback loop: the strip has an explicit clamp()'d height and its
+// children can't exceed it, so writing the bars can't change the observed
+// box, and the signature check above makes any spurious re-entry a no-op.
+new ResizeObserver(entries => {
+  const h = entries[0].contentRect.height;
+  if (h === cdcHeight) return;
+  cdcHeight = h;
+  if (h > 0 && lastCDCBlocks) renderCDC(lastCDCBlocks);
+}).observe(cdcStrip);
 
 // ── MEMPOOL FEES ──────────────────────────────────────────
-// Fee rates (sat/vB) for four priority tiers, derived from mempool.space's
-// projected blocks (/fees/mempool-blocks). Each projected block holds ~10 min
-// of pending transactions; we take the median fee at the depth matching each
-// tier, so the numbers are genuinely fractional rather than the whole-sat/vB
-// values the /fees/recommended endpoint rounds to.
-//   High → next block (~10m)        Med → ~30m (3rd projected block)
-//   Low  → ~1h (6th projected block) No  → cheapest projected block (economy)
+// Fee tiers, derivation and fetch/cache live in shared.js (BTC.fees) — the
+// cache is a genuine cross-page contract with the dashboard (same key), so
+// the two must never drift. This section just renders into the ticker's DOM.
 // Fee tiers only really shift on a new block (~10min avg) or a mempool
 // reshuffle, but a 60s cadence keeps the bar in step with the live price
-// ticker next to it at negligible request cost. Cached in localStorage so
-// the bar repaints instantly on load; the cache is shared with the dashboard.
-const FEES_STORAGE_KEY = 'btcticker_v2_fees';
-const FEES_TTL_MS      = 60_000;
-const FEES_URL         = 'https://mempool.space/api/v1/fees/mempool-blocks';
-
+// ticker next to it at negligible request cost.
 const feeEls = {
   no:   document.getElementById('fee-no'),
   low:  document.getElementById('fee-low'),
@@ -598,27 +619,11 @@ const feeEls = {
   high: document.getElementById('fee-high'),
 };
 
-// projected blocks → { no, low, med, high } median fee rates; indices are
-// clamped so a near-empty mempool (one projected block) collapses gracefully
-function deriveTiers(blocks) {
-  if (!Array.isArray(blocks) || !blocks.length) return null;
-  const n   = blocks.length;
-  const med = i => blocks[Math.min(i, n - 1)].medianFee;
-  return { high: med(0), med: med(2), low: med(5), no: med(n - 1) };
-}
-
-// display-only rounding: values >= 1 sat/vB round to a whole number, values
-// below 1 round to 1 decimal. The stored/fetched values themselves always
-// stay fractional-precise (see deriveTiers).
-function fmtFeeRate(v) {
-  return v >= 1 ? String(Math.round(v)) : v.toFixed(1);
-}
-
 function renderFees(t) {
   if (!t) return;
   for (const [key, el] of Object.entries(feeEls)) {
     const v = t[key];
-    if (v != null && !isNaN(v)) el.textContent = fmtFeeRate(Number(v));
+    if (v != null && !isNaN(v)) el.textContent = BTC.fees.fmtFeeRate(Number(v));
   }
 }
 
@@ -626,26 +631,22 @@ function renderFees(t) {
 // key), returning the cache timestamp so the caller can decide whether it's
 // stale enough to warrant a network hit
 function loadCachedFees() {
-  try {
-    const cached = JSON.parse(localStorage.getItem(FEES_STORAGE_KEY));
-    if (cached && cached.tiers) { renderFees(cached.tiers); return cached.ts || 0; }
-  } catch {}
-  return 0;
+  const cached = BTC.fees.readCache();
+  if (cached) renderFees(cached.tiers);
+  return cached ? cached.ts : 0;
 }
 
 async function fetchFees() {
   try {
-    const tiers = deriveTiers(await fetchJSON(FEES_URL));
-    if (tiers) {
-      renderFees(tiers);
-      try { localStorage.setItem(FEES_STORAGE_KEY, JSON.stringify({ ts: Date.now(), tiers })); } catch {}
-    }
+    const result = await BTC.fees.refresh();
+    if (result) renderFees(result.tiers);
   } catch {}
 }
 
 // the interval always hits the network — the cache is only for the instant
-// paint on load and for sharing the reading with the dashboard
-setInterval(fetchFees, FEES_TTL_MS);
+// paint on load and for sharing the reading with the dashboard. Skipped while
+// the tab/WebView is hidden; visibilitychange (below) catches up on resume.
+setInterval(() => { if (!document.hidden) fetchFees(); }, BTC.fees.TTL_MS);
 
 // ── CLOCK ─────────────────────────────────────────────────
 // bottom-left wall clock, fixed to Bangkok time regardless of the kiosk's
@@ -667,20 +668,35 @@ function isNightHour(h) {
   return h >= 23 || h < 8;
 }
 
-function updateNightMode() {
-  const { hh } = bangkokTimeParts();
+// hh optional so applyVisibility()'s parameterless call (Force Night Mode
+// toggling) still works standalone without a second formatToParts call
+function updateNightMode(hh = bangkokTimeParts().hh) {
   const active = STATE.visibility.nightForce ||
     (STATE.visibility.nightSchedule && isNightHour(parseInt(hh, 10)));
   document.body.classList.toggle('night-mode', active);
 }
 
+let lastClockText = '';
 function tickClock() {
   const { hh, mm } = bangkokTimeParts();
-  clockEl.textContent = `${hh}:${mm}`;
-  updateNightMode();
+  const text = `${hh}:${mm}`;
+  if (text !== lastClockText) { lastClockText = text; clockEl.textContent = text; }
+  updateNightMode(hh);
 }
-setInterval(tickClock, 1000);
-tickClock();
+
+// The displayed value changes once a minute, so tick on the minute boundary
+// instead of at 1Hz — the old setInterval(tickClock, 1000) meant tickClock
+// and updateNightMode each called bangkokTimeParts() every second, ~172,800
+// Intl.formatToParts calls/day for a value that changes 1,440x/day. Re-derived
+// from Date.now() each time (not accumulated), so it self-corrects after any
+// timer drift or a suspend rather than compounding it. Bangkok is UTC+7, a
+// whole-hour offset, so its minute boundaries land on the same instants as
+// UTC's — %60_000 against wall-clock ms is safe here.
+function scheduleClock() {
+  tickClock();
+  setTimeout(scheduleClock, 60_000 - (Date.now() % 60_000) + 50);
+}
+scheduleClock();
 
 // ── SCHEDULED RELOAD ──────────────────────────────────────
 // this app is built to run unattended for weeks on kiosk hardware; a
@@ -703,4 +719,4 @@ connect(STATE.exchange);
 initCDC();
 scheduleReload();
 // paint cached fees instantly; only fetch on load if the cache is stale/absent
-if (Date.now() - loadCachedFees() >= FEES_TTL_MS) fetchFees();
+if (Date.now() - loadCachedFees() >= BTC.fees.TTL_MS) fetchFees();

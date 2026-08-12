@@ -24,6 +24,13 @@
 }
 
 *{ margin: 0; padding: 0; box-sizing: border-box; }
+/* The UA stylesheet's [hidden]{display:none} is specificity (0,0,1) — any
+   author rule with a `display` declaration silently outranks it. .badge's
+   `display: inline-flex` did exactly that, so toggling the F&G/24H metrics
+   off left an empty pill on screen showing only its ::before label. Restated
+   here at author level so [hidden] means hidden for every element, present
+   or future, regardless of what else sets `display` on it. */
+[hidden] { display: none !important; }
 body {
   background: var(--bg);
   height: 100vh;
@@ -109,7 +116,8 @@ body {
 
 /* Fear & Greed + 24h change — labelled pills in the top-right of the top bar,
    next to the fullscreen button. Both spans carry [hidden] when their metric
-   is off, so an empty row collapses to nothing. */
+   is off, and the universal [hidden] rule above (not this class) is what
+   makes that collapse to nothing rather than an empty bordered pill. */
 .badge-row {
   display: flex;
   align-items: center;
@@ -308,6 +316,14 @@ body.night-mode {
   accent-color: var(--accent);
   cursor: pointer;
 }
+/* set from app.js's refreshToggleAvailability() when a container-query fold
+   (short viewport) has hidden the metric regardless of its checkbox state —
+   dims the row and disables the input so it doesn't look like a live control */
+.menu-toggle:has(input:disabled) {
+  opacity: 0.4;
+  cursor: default;
+}
+.menu-toggle input:disabled { cursor: default; }
 
 #dashboard-link {
   border-top: 1px solid var(--border);

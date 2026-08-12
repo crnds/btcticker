@@ -345,6 +345,9 @@
       position: relative;
       height: 8px;
       border-radius: 4px;
+      /* stops mirror BTC.fng.COLORS in shared.js — a static gradient can't
+         reference that JS array, so keep the five colours in sync by hand
+         if the ramp ever changes */
       background: linear-gradient(to right,
         #ff1744 0%, #ff6d00 25%, #ffeb3b 50%, #69f0ae 75%, #00e676 100%);
     }
@@ -636,6 +639,11 @@
 
 </main>
 
+<!-- shared.js must load first, and must stay a plain classic script (no
+     defer/async/type="module") — see its header comment: this page's own
+     <script> below is parser-blocking and runs the instant the parser
+     reaches it, so a deferred shared.js would let it run first and fail. -->
+<script src="shared.js"></script>
 <script src="data/cdc.js"></script>
 <script src="data/fng.js"></script>
 <script>
@@ -678,7 +686,12 @@
     const genTs  = new Date(cdc.generated).getTime();
     const fresh  = age < 24;
 
-    // Freshness notice
+    // Freshness notice. The 48h here is the CDC-file's own threshold — it's
+    // unrelated to BTC.fng.STALE_HOURS below despite sharing the number; one
+    // tracks the Kraken/EMA pipeline (fetch_cdc.py, daily), the other tracks
+    // the CoinMarketCap pipeline (fetch_fng.py, 6-hourly). Deliberately not
+    // unified — coupling them would tie two independent pipelines' health
+    // checks together for no reason beyond the coincidence of the number.
     if (age > 48) {
       noticeEl.className = 'notice stale';
       noticeEl.innerHTML = `<strong>CDC ${Math.floor(age / 24)}d old.</strong> Run <code>python3 fetch_cdc.py</code>.`;
@@ -715,22 +728,20 @@
     streakEl.className = `value ${lastSignal ? 'bull' : 'bear'}`;
     document.getElementById('cdc-streak-sub').textContent = lastSignal ? 'bullish' : 'bearish';
 
-    // CDC chart — bars fill the panel height (percentage of each half)
-    const diffs = blocks.map(b => b.diff);
-    const minD  = Math.min(...diffs);
-    const maxD  = Math.max(...diffs);
-    const range = maxD - minD || 1;
-    document.getElementById('cdc-chart').innerHTML = blocks.map(b => {
-      const frac  = 8 + ((b.diff - minD) / range) * 92;   // 8–100 % of the half
+    // CDC chart — bars fill the panel height (percentage of each half).
+    // BTC.cdc.scale (shared.js) is the same normalisation the ticker's own
+    // strip uses (there it bakes pixel heights instead of CSS percent), so
+    // the two pages can no longer disagree about what a bar height means.
+    document.getElementById('cdc-chart').innerHTML = BTC.cdc.scale(blocks).map(b => {
       const today = b.today ? ' today' : '';
-      const bar   = `<div class="db-block ${b.bull ? 'bull' : 'bear'}${today}" style="height:${frac}%"></div>`;
+      const bar   = `<div class="db-block ${b.bull ? 'bull' : 'bear'}${today}" style="height:${(b.frac * 100).toFixed(2)}%"></div>`;
       return b.bull
         ? `<div class="db-slot"><div class="db-half top">${bar}</div><div class="db-half bot"></div></div>`
         : `<div class="db-slot"><div class="db-half top"></div><div class="db-half bot">${bar}</div></div>`;
     }).join('');
 
     // Date range labels
-    const startTs = genTs - (blocks.length - 1) * 86_400_000;
+    const startTs = genTs - (blocks.length - 1) * BTC.DAY_MS;
     document.getElementById('cdc-label-start').textContent = fmtDate(startTs);
     if (!fresh) document.getElementById('cdc-label-end').textContent = fmtDate(genTs);
 
@@ -748,7 +759,7 @@
 
     // Block detail table (newest first)
     document.getElementById('block-table').innerHTML = [...blocks].reverse().map((b, i) => {
-      const dayTs   = genTs - i * 86_400_000;
+      const dayTs   = genTs - i * BTC.DAY_MS;
       const dayLabel = i === 0 && fresh
         ? `Today <span style="color:var(--muted);font-size:10px">(incomplete)</span>`
         : fmtDate(dayTs);
@@ -765,8 +776,8 @@
   // Reads window.LOCAL_FNG from data/fng.js — refreshed every 6h server-side
   // from the CoinMarketCap API (the key never reaches the browser).
   (function renderFearGreed() {
-    const COLORS   = ['#ff1744', '#ff6d00', '#ffeb3b', '#69f0ae', '#00e676'];
-    const colorFor = v => COLORS[Math.min(Math.floor(v / 20), 4)];
+    // colour ramp lives in shared.js (BTC.fng.colorFor) — stops mirror
+    // BTC.fng.COLORS, keep them in sync if that ramp ever changes
     const fng = window.LOCAL_FNG;
 
     if (!fng || isNaN(fng.value)) {
@@ -777,21 +788,23 @@
     const value = fng.value;
     const valEl = document.getElementById('fng-value');
     valEl.textContent = value;
-    valEl.style.color = colorFor(value);
+    valEl.style.color = BTC.fng.colorFor(value);
     document.getElementById('fng-class').textContent = fng.classification || '';
     document.getElementById('fng-marker').style.left = Math.max(0, Math.min(100, value)) + '%';
     document.getElementById('fng-gauge-wrap').style.visibility = 'visible';
 
-    // CMC refreshes every 6h, so a reading older than 48h means the refresh
-    // pipeline is broken (e.g. an expired CMC_API_KEY secret) — flag it loudly
-    // rather than presenting a frozen number as current.
+    // BTC.fng.isStale uses the same 48h threshold (BTC.fng.STALE_HOURS) the
+    // ticker flags with — CMC refreshes every 6h, so a reading older than
+    // that means the refresh pipeline is broken (e.g. an expired
+    // CMC_API_KEY secret); flag it loudly rather than presenting a frozen
+    // number as current.
     const stamp = fng.update_time || fng.generated;
     if (stamp) {
       const age = hoursAgo(stamp);
       const sub = document.getElementById('fng-fetched-sub');
       document.getElementById('fng-fetched').textContent = fmtDateTime(stamp);
       sub.textContent = fmtAge(age);
-      if (age > 48) {
+      if (BTC.fng.isStale(stamp)) {
         sub.textContent += ' · ⚠ stale';
         sub.style.color = '#ff6d00';
         valEl.style.opacity = '0.45';
@@ -800,35 +813,33 @@
   })();
 
   // ── Price history (localStorage) ─────────────────────
+  // BTC.history.load() (shared.js) owns the legacy-key fallback, the 24h
+  // window filter and the ts/price validation — this page can't assume the
+  // ticker has ever run on this machine, so the fallback matters here more
+  // than it does in app.js (which also does the pre-v1 key migration).
   (function renderHistory() {
-    try {
-      const raw = localStorage.getItem('btcticker_v1_history')
-               || localStorage.getItem('btcticker_history'); // pre-v1 fallback
-      if (!raw) throw new Error('empty');
-      // the ticker prunes on write, but enforce the 24h window here too in
-      // case the ticker hasn't been opened recently
-      const hist = JSON.parse(raw).filter(e => e.ts >= Date.now() - 86_400_000);
-      if (!hist.length) throw new Error('empty');
-
-      document.getElementById('hist-count').textContent = hist.length.toLocaleString();
-
-      const latest = hist[hist.length - 1];
-      document.getElementById('hist-latest').textContent = fmtUSD(latest.price);
-      document.getElementById('hist-latest-sub').textContent = fmtDateTime(latest.ts);
-
-      const prices   = hist.map(e => e.price);
-      const high     = Math.max(...prices);
-      const low      = Math.min(...prices);
-      const highEntry = hist.find(e => e.price === high);
-      const lowEntry  = hist.find(e => e.price === low);
-
-      document.getElementById('hist-high').textContent     = fmtUSD(high);
-      document.getElementById('hist-high-sub').textContent = fmtDateTime(highEntry.ts);
-      document.getElementById('hist-low').textContent      = fmtUSD(low);
-      document.getElementById('hist-low-sub').textContent  = fmtDateTime(lowEntry.ts);
-    } catch {
+    const hist = BTC.history.load();
+    if (!hist.length) {
       document.getElementById('hist-latest-sub').textContent = 'open ticker first';
+      return;
     }
+
+    document.getElementById('hist-count').textContent = hist.length.toLocaleString();
+
+    const latest = hist[hist.length - 1];
+    document.getElementById('hist-latest').textContent = fmtUSD(latest.price);
+    document.getElementById('hist-latest-sub').textContent = fmtDateTime(latest.ts);
+
+    const prices   = hist.map(e => e.price);
+    const high     = Math.max(...prices);
+    const low      = Math.min(...prices);
+    const highEntry = hist.find(e => e.price === high);
+    const lowEntry  = hist.find(e => e.price === low);
+
+    document.getElementById('hist-high').textContent     = fmtUSD(high);
+    document.getElementById('hist-high-sub').textContent = fmtDateTime(highEntry.ts);
+    document.getElementById('hist-low').textContent      = fmtUSD(low);
+    document.getElementById('hist-low-sub').textContent  = fmtDateTime(lowEntry.ts);
   })();
 
   // ── Live price (Binance REST, 30s poll) ──────────────
@@ -843,12 +854,8 @@
     let prev = null;
 
     async function tick() {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8_000);
       try {
-        const r = await fetch(PX_URL, { signal: ctrl.signal });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const d = await r.json();
+        const d = await BTC.fetchJSON(PX_URL);
         const price = parseFloat(d.lastPrice);
         const chg   = parseFloat(d.priceChangePercent);
 
@@ -868,8 +875,6 @@
         dotEl.classList.add('stale');
         chgEl.textContent = 'offline';
         chgEl.className   = 'live-chg muted';
-      } finally {
-        clearTimeout(timer);
       }
     }
 
@@ -880,66 +885,38 @@
   // ── Mempool fees (mempool.space, 60s poll) ─────────
   // Median fee rates from mempool.space's projected blocks — genuinely
   // fractional, unlike the whole-sat/vB /fees/recommended endpoint. Same four
-  // tiers the ticker shows; painted instantly from the shared localStorage
-  // cache (btcticker_v2_fees), then refreshed live.
+  // tiers the ticker shows; fetch/derive/cache live in shared.js (BTC.fees) —
+  // btcticker_v2_fees is a real cross-page contract, so this page paints
+  // instantly from whatever the ticker (or a prior visit here) last cached.
   (function mempoolFees() {
-    const FEES_URL = 'https://mempool.space/api/v1/fees/mempool-blocks';
-    const KEY      = 'btcticker_v2_fees';
-    const TTL_MS   = 60_000;
     const fetchedEl = document.getElementById('fees-fetched');
-
-    // projected blocks → median fee per tier (mirrors the ticker's app.js)
-    function deriveTiers(blocks) {
-      if (!Array.isArray(blocks) || !blocks.length) return null;
-      const n   = blocks.length;
-      const med = i => blocks[Math.min(i, n - 1)].medianFee;
-      return { high: med(0), med: med(2), low: med(5), no: med(n - 1) };
-    }
-
-    // display-only rounding: values >= 1 sat/vB round to a whole number,
-    // values below 1 round to 1 decimal. Stored/fetched values stay fractional.
-    function fmtFeeRate(v) {
-      return v >= 1 ? String(Math.round(v)) : v.toFixed(1);
-    }
 
     function render(t, ts) {
       if (!t) return;
       const cells = { 'fee-no': t.no, 'fee-low': t.low, 'fee-med': t.med, 'fee-high': t.high };
       for (const [id, v] of Object.entries(cells)) {
-        if (v != null && !isNaN(v)) document.getElementById(id).textContent = fmtFeeRate(Number(v));
+        if (v != null && !isNaN(v)) document.getElementById(id).textContent = BTC.fees.fmtFeeRate(Number(v));
       }
       if (ts) fetchedEl.textContent = fmtAge(hoursAgo(ts));
     }
 
     // paint cached reading immediately
     let cachedTs = 0;
-    try {
-      const c = JSON.parse(localStorage.getItem(KEY));
-      if (c && c.tiers) { render(c.tiers, c.ts); cachedTs = c.ts || 0; }
-    } catch {}
+    const cached = BTC.fees.readCache();
+    if (cached) { render(cached.tiers, cached.ts); cachedTs = cached.ts; }
 
     async function tick() {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8_000);
       try {
-        const r = await fetch(FEES_URL, { signal: ctrl.signal });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const tiers = deriveTiers(await r.json());
-        if (tiers) {
-          const ts = Date.now();
-          render(tiers, ts);
-          try { localStorage.setItem(KEY, JSON.stringify({ ts, tiers })); } catch {}
-        }
+        const result = await BTC.fees.refresh();
+        if (result) render(result.tiers, result.ts);
       } catch {
         if (!cachedTs) fetchedEl.textContent = 'offline';
-      } finally {
-        clearTimeout(timer);
       }
     }
 
     // only hit the network on load if the shared cache is stale/absent
-    if (Date.now() - cachedTs >= TTL_MS) tick();
-    setInterval(tick, TTL_MS);
+    if (Date.now() - cachedTs >= BTC.fees.TTL_MS) tick();
+    setInterval(tick, BTC.fees.TTL_MS);
   })();
 </script>
 </body>
