@@ -124,9 +124,10 @@ body {
   font-weight: 400;
   line-height: 1;
   white-space: nowrap;
-  /* cq units now resolve against the `ticker` container (the whole page) rather
-     than the price row this used to live in — hence the smaller coefficients */
-  font-size: clamp(9px, min(3cqw, 3.6cqh), 22px);
+  /* cq units resolve against the `ticker` container (the whole page), not the
+     price row these used to live in. Every term is 3x the size the badges were
+     first given in the top bar; the em-based padding and label scale with it. */
+  font-size: clamp(27px, min(9cqw, 10.8cqh), 66px);
   background: rgba(255,255,255,0.05);
   border: 1px solid var(--border);
   border-radius: 999px;
@@ -150,6 +151,19 @@ body {
 }
 .badge.chg.pos { color: var(--up); }
 .badge.chg.neg { color: var(--down); }
+/* At 3x, two badges claim over half the available width whatever the screen
+   size — and .topbar-right doesn't shrink, so on a narrow screen they squeeze
+   the fee bar until its numbers clip (at 360px it was down to 7px of the 71px
+   it needs). Below 700px the growth term eases back so both fit one row; the
+   full 3x still applies at every width above that. */
+@container ticker (max-width: 700px) {
+  .badge { font-size: clamp(14px, min(6cqw, 10.8cqh), 44px); }
+}
+/* phone widths: one more step down, so the fee numbers stay whole rather than
+   the badges keeping their size at the fee bar's expense */
+@container ticker (max-width: 400px) {
+  .badge { font-size: clamp(12px, min(4.6cqw, 10.8cqh), 26px); }
+}
 
 #status-row {
   grid-row: 4;
@@ -345,7 +359,7 @@ body.night-mode {
   display: flex;
   align-items: stretch;   /* slots stretch to fill the strip's own (responsive) height */
   gap: 3px;
-  height: clamp(30px, 13.5cqh, 105px);
+  height: clamp(44px, 20cqh, 155px);
   padding: 0 clamp(10px, 3cqw, 20px);
   user-select: none;
 }
