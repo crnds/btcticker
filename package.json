@@ -1,11 +1,13 @@
 {
   "name": "btcticker",
-  "version": "1.11.0",
+  "version": "1.12.0",
   "description": "Real-time BTC price ticker for kiosk display, with Android home-screen widgets via Capacitor",
   "main": "app.js",
   "scripts": {
-    "build": "mkdir -p dist && cp index.html db.html style.css app.js dist/ && cp -r assets data dist/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:www": "rm -rf www && mkdir -p www && cp index.html db.html style.css shared.js app.js www/ && cp -r assets data www/",
+    "build": "npm run build:www && rm -rf dist && cp -r www dist",
+    "sync:android": "npm run build:www && npx cap sync android",
+    "test": "python3 -m unittest discover -s tests -t . -v"
   },
   "repository": {
     "type": "git",
