@@ -11,6 +11,15 @@ on:
 permissions:
   contents: write
 
+# update-cdc.yml and update-fng.yml declare the SAME group on purpose: their
+# crons are 5 minutes apart, both push to main, and GitHub's scheduler lag is
+# routinely hours, so overlap is normal rather than exotic. Queue instead of
+# cancelling — a cancelled run silently drops a data point, which is the
+# failure this exists to prevent.
+concurrency:
+  group: data-commit
+  cancel-in-progress: false
+
 jobs:
   update-fng:
     runs-on: ubuntu-latest
@@ -29,8 +38,23 @@ jobs:
 
       - name: Commit updated Fear & Greed data
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/fng.js
-          git diff --cached --quiet || git commit -m "chore: update Fear & Greed data $(date -u +'%Y-%m-%d %H:%MZ')"
-          git push
+          if git diff --cached --quiet; then
+            echo "No change — nothing to commit"
+            exit 0
+          fi
+          git commit -m "chore: update Fear & Greed data $(date -u +'%Y-%m-%d %H:%MZ')"
+          # concurrency: data-commit makes an overlap unlikely, but a push can
+          # still lose to something else landing on main mid-run. Rebase and
+          # retry; our commit only touches data/fng.js, so a real conflict
+          # isn't reachable in practice — update-cdc.yml writes a different file.
+          for attempt in 1 2 3; do
+            if git push; then exit 0; fi
+            echo "push rejected (attempt $attempt) — rebasing onto origin/main"
+            git pull --rebase origin main
+          done
+          echo "::error::could not push data/fng.js after 3 attempts"
+          exit 1
