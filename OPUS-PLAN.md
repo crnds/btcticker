@@ -110,6 +110,10 @@ doesn't pool WS with the HTTP pool) for `stream.binance.com`.
 `#price`'s `overflow:hidden` with `nowrap` — a clipped wrong-looking price then a reflow is worse on
 a wall display than a brief blank. The preload removes the part that is unambiguously a bug.
 
+> *Later (2026-08-14):* still the rule, and still for this reason, though the margin narrowed when the
+> face changed from Bebas Neue to JetBrains Mono — a fallback mono is closer in width than a fallback
+> for a condensed face was. Both shipped weights carry `font-display: block`.
+
 ## Phase 4 — `shared.js` (the structural refactor)
 
 **Decision: one new classic script, `shared.js`, attaching a `window.BTC` namespace. Not ES modules**
@@ -127,7 +131,8 @@ Highest-value item in this phase: `btcticker_v2_fees` is a real **cross-page con
 the key or stored shape silently breaks instant-paint on the other page with no error anywhere.
 
 **Deliberately NOT shared — CSS stays as it is.** The two pages are two intentional design systems
-(Bebas Neue vs `system-ui`; the same variable names hold different values). A shared stylesheet would
+(Bebas Neue — JetBrains Mono as of 2026-08-14 — vs `system-ui`; the same variable names hold
+different values). A shared stylesheet would
 need per-page override blocks — more code than the ~6 genuinely identical lines it removes — and
 would cost db.html its single-file portability. The CDC gap/radius/opacity differences are per-page
 tuning (155px responsive strip vs fixed 200px panel), not drift. Add a `keep in sync` comment above
@@ -236,6 +241,11 @@ Accessibility and contrast — the audit found real problems (`--faint2` at **1.
 Also left alone: both cron schedules (the 6-hourly F&G cadence was a considered fix); the Capacitor
 scaffolding tests (generated, passing, `cap sync` may recreate them); font subsetting (~11KB saved
 once per kiosk lifetime); `db.html`'s inline CSS; the two oversized JPEGs in git history.
+
+> *Later (2026-08-14):* font subsetting did happen, as a side effect of retypesetting the ticker in
+> JetBrains Mono — both shipped weights are subset to printable ASCII + `…` + `—`. It did not save
+> anything: two subset weights total 35.0 KB against the 13.7 KB unsubset Bebas file. The size note
+> above was never the reason to do it.
 
 ## Commit strategy
 

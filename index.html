@@ -10,7 +10,10 @@
      otherwise delay the price — the entire point of the page — on a cold
      cache. crossorigin is required even same-origin: font fetches are always
      CORS-mode, and a preload without it fetches the file twice. -->
-<link rel="preload" href="assets/bebas-neue-400.woff2" as="font" type="font/woff2" crossorigin>
+<!-- 800 first: it's the price, i.e. the only text anyone reads from across the
+     room, and font-display:block means nothing paints until it lands. -->
+<link rel="preload" href="assets/jetbrains-mono-800.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="assets/jetbrains-mono-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="style.css">
 <!-- mempool.space is a real cross-origin fetch, on load and every 60s -->
 <link rel="preconnect" href="https://mempool.space" crossorigin>
@@ -72,15 +75,6 @@
   </button>
 </div>
 </header>
-<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
-  <filter id="night-red-filter" color-interpolation-filters="sRGB">
-    <feColorMatrix type="matrix" values="
-      0.09 0.18 0.03 0 0
-      0    0    0    0 0
-      0    0    0    0 0
-      0    0    0    1 0"/>
-  </filter>
-</svg>
 <div id="loading" role="status" aria-live="polite"><span class="d">·</span><span class="d">·</span><span class="d">·</span></div>
 <main id="price">
   <div class="price-content">

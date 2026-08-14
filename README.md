@@ -91,7 +91,9 @@ On a short viewport, TX Fees and/or the CDC strip may fold away automatically to
 - **Left:** the `···` settings button, then the fee bar — four sat/vB tiers from mempool.space (`NO` split off by a divider from the `LOW`/`MED`/`HIGH` group), each tier a dim uppercase label above a bold orange value
 - **Right:** the **F&G** and **24H** pills, then the `⛶` fullscreen button. Each pill carries its own monospace label; F&G is coloured by quintile band (red → orange → yellow → light green → green), 24H is green `+` / red `−`. A Fear & Greed reading older than 48 hours renders dimmed with a dotted underline — a visible signal the refresh pipeline needs attention
 
-**Price** — the dominant element, sized off its own grid row (`min(34cqw, 66cqh)`) rather than the whole viewport, so it fills whatever space the top bar and footer leave rather than overflowing them. Decimals sit inline at 38% of the integer size, at 50% white.
+**Price** — the dominant element, sized off its own grid row rather than the whole viewport, so it fills whatever space the top bar and footer leave rather than overflowing them. The size is **derived from the digit count**, not from a fixed fraction of the row: `min(calc(100cqw / var(--price-em)), 120cqh)`, where `--price-em` is the string's width in em, computed from the `--price-chars` that `app.js` publishes on each render. Because JetBrains Mono is fixed-advance, counting characters *is* measuring the string, so the price spans the full row at any length from `9,999` to `9,999,999.99` with no measurement pass and no way to clip. The `cqh` term is only a guard for tall-and-narrow windows — in landscape the width term binds, which is the point of the formula. Decimals sit inline at 38% of the integer size, at 50% white.
+
+> The previous formula was `min(34cqw, 66cqh)`, which the height term always won in landscape (370px against the 586px the width offered), so the price was capped by leftover vertical space, ignored screen width entirely, and sat in ~45% of empty gutter. Don't reintroduce a fixed `cqw` term: it can't be both gap-free at six digits and clip-free at nine.
 
 **CDC strip** — 30 daily EMA(12)/EMA(26) blocks on a centre line: bull bars grow up in green, bear bars hang down in red, bar height scaled by |EMA12 − EMA26| across the 30-day window, today's block at 40% opacity.
 
@@ -384,7 +386,7 @@ The web app has no build step of its own — `index.html`, `style.css`, `shared.
 ```
 btcticker/
 ├── index.html              — ticker: top bar (menu + fee bar + F&G/24H pills + fullscreen), price, CDC strip, clock/status footer, Night Mode filter
-├── style.css               — layout, Bebas Neue font, dark theme, container-query responsive folding
+├── style.css               — layout, JetBrains Mono font, dark theme, container-query responsive folding
 ├── shared.js               — logic shared by index.html and db.html: fetch-with-timeout, storage keys, F&G ramp/staleness, fee-tier derivation, CDC bar scaling (see its header comment for why it's a plain classic script)
 ├── app.js                  — WebSocket client, localStorage history, clock/Night Mode, CDC/fees/F&G rendering
 ├── db.html                 — dashboard: CDC stats + fee tiers + price history
@@ -399,7 +401,8 @@ btcticker/
 │   ├── cdc.js              — bundled CDC data (the only tier the browser actually reads)
 │   └── fng.js              — bundled Fear & Greed snapshot (ditto)
 ├── assets/
-│   └── bebas-neue-400.woff2 — self-hosted display font (13.7 KB)
+│   ├── jetbrains-mono-800.woff2 — self-hosted UI font, price weight (17.4 KB, ASCII subset)
+│   └── jetbrains-mono-400.woff2 — same face, label weight (17.4 KB, ASCII subset)
 ├── install.sh              — Linux kiosk installer (browser launcher + autostart)
 ├── .github/workflows/
 │   ├── ci.yml              — runs the test suite + a version-consistency check on push/PR
@@ -466,7 +469,15 @@ Pre-v1 unversioned keys (`btcticker_history`, `btcticker_exchange`) are migrated
 
 ## Font
 
-**Bebas Neue** self-hosted from `assets/bebas-neue-400.woff2`. No external font requests on load.
+**JetBrains Mono**, self-hosted at two weights — `assets/jetbrains-mono-800.woff2` (the price and the pill values) and `assets/jetbrains-mono-400.woff2` (every label). No external font requests on load; both are preloaded ahead of `style.css`, the 800 first since it's the text that has to paint.
+
+Both files are subset to printable ASCII plus `…` and `—` (17.4 KB each, 35.0 KB total, against 13.7 KB for the single Bebas Neue file this replaced). `font-display: block` on both is deliberate — see `OPUS-PLAN.md`.
+
+A side benefit of the fallback chain being `ui-monospace, monospace`: SF Mono, Menlo and Roboto Mono all use the same 0.60 em advance, so if the woff2 never arrives the price still fits the row exactly rather than clipping. Under Bebas the fallback rendered 40–50% wider.
+
+One family covers the whole UI. The small labels (`#fees`, `#clock`, `#ws-status`, `.badge::before`, the menu, `#loading`) previously asked for generic `monospace`, which resolves to SF Mono on macOS and Roboto Mono in the car's WebView — so the kiosk never quite matched what development looked like. `db.html` is deliberately *not* included; it remains its own `system-ui` design system.
+
+Two things are coupled to the choice of face and must move together: `--adv` in `.price-figure` (the digit advance, 0.60 em) and the `cqw` growth terms on `.badge`. A face with a different advance silently mis-fits the price; a wider one squeezes the fee bar, since `.topbar-right` doesn't shrink.
 
 ---
 

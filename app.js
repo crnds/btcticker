@@ -78,12 +78,14 @@ const EXCHANGES = {
 };
 
 // ── STATE ─────────────────────────────────────────────────
-const CDC_STORAGE_KEY = BTC.keys.cdc;
+// data/cdc.js and data/fng.js are bundled and loaded before this script, so
+// they no longer need a localStorage cache tier — only the hourly re-check
+// interval remains
 const CDC_TTL_MS      = 60 * 60 * 1000;
-// 5 min: cuts localStorage writes 5x versus a 1 min cadence — kinder to the
-// flash storage on a 24/7 kiosk box, and 5 min resolution is still plenty
-// dense for a 24h history window
-const SNAPSHOT_MS     = 5 * 60_000;
+// 10 min: still plenty dense for a 24h history window (144 points) and halves
+// the localStorage writes of the old 5 min cadence — kinder to the flash
+// storage on a 24/7 kiosk box
+const SNAPSHOT_MS     = 10 * 60_000;
 // 1s: still reads as "live" on a glance at a wall-mounted display, but halves
 // the paint work of a 2/s cadence — #price is close to the largest painted
 // area on screen, which matters on low-power kiosk hardware
@@ -123,6 +125,7 @@ const STATE = {
   last: 0,
   lastUpdated: null,
   pending: false,
+  pendingRaw: null,   // last raw WS message, parsed on the 1 Hz tick below
   retryMs: 1000,
   ws: null,
   reconnectTimer: null,
@@ -139,6 +142,12 @@ const priceIntEl = document.getElementById('price-int');
 const priceDecEl = document.getElementById('price-dec');
 const priceChgEl = document.getElementById('price-chg');
 const priceFngEl = document.getElementById('price-fng');
+// the figure itself, so renderPriceDOM can publish the digit count its
+// font-size formula divides by (see .price-figure in style.css)
+const priceFigureEl = document.querySelector('.price-figure');
+// --price-chars is written as a string; cache what we set to keep the
+// change-guard a cheap string compare rather than a style readback
+let lastPriceChars = '';
 // el.style.color reads back serialised ("rgb(255, 23, 68)"), never as the hex
 // we wrote — comparing against the readback always fails, so track what we
 // last wrote instead (see renderPriceDOM below)
@@ -188,6 +197,18 @@ function renderPriceDOM(n, change) {
   if (priceIntEl.textContent !== intFmt) priceIntEl.textContent = intFmt;
   if (priceDecEl.textContent !== dec) priceDecEl.textContent = dec;
 
+  // Publish the integer run's glyph count so the price can size itself to fill
+  // the row (style.css .price-figure). intFmt.length is exact rather than an
+  // estimate: the face is monospaced, so the comma advances by the same 0.60em
+  // as a digit and counting characters counting *is* measuring the string. This
+  // is what lets the price refit itself from 9,999 through 1,000,000.00 with no
+  // measurement pass and no risk of clipping inside #price's overflow:hidden.
+  const chars = String(intFmt.length);
+  if (chars !== lastPriceChars) {
+    priceFigureEl.style.setProperty('--price-chars', chars);
+    lastPriceChars = chars;
+  }
+
   const showChg = STATE.visibility.change && change !== null && change !== undefined && !isNaN(change);
   priceChgEl.hidden = !showChg;
   if (showChg) {
@@ -202,6 +223,8 @@ function renderPriceDOM(n, change) {
   priceFngEl.hidden = !showFng;
   if (showFng) {
     const { value, classification, updateTime } = STATE.fearGreed;
+    // recompute staleness every render: it depends on Date.now(), so a cached
+    // result would freeze a reading as "fresh" after the 48h threshold passes
     const stale = BTC.fng.isStale(updateTime);
     const title = stale
       ? `Fear & Greed: ${classification} — stale (last updated ${updateTime})`
@@ -228,7 +251,29 @@ function setStatus(state) {
     : state === 'reconnecting' ? 'reconnecting…' : 'connecting…';
 }
 
-function tickPriceRender() {
+// Parse only the most recent WS message each tick, not every frame — busy
+// streams (Bitstamp trades) arrive at ~10 Hz while the display only paints at
+// 1 Hz, so eager parsing was ~90% wasted JSON work on low-power hardware.
+function tickPrice() {
+  if (STATE.pendingRaw) {
+    const raw = STATE.pendingRaw;
+    STATE.pendingRaw = null;
+    // every parse() does a bare JSON.parse — a non-JSON frame (an OKX "pong",
+    // a proxy's HTML error body, a truncated payload) must fail soft here
+    try {
+      const result = EXCHANGES[STATE.exchange].parse(raw);
+      if (result && result.price) {
+        STATE.latest = result.price;
+        if (result.change !== null && !isNaN(result.change)) STATE.latestChange = result.change;
+        STATE.lastUpdated = Date.now();
+        loadingEl.classList.remove('active');
+        if (!STATE.history.length) {
+          STATE.history.push({ ts: Date.now(), price: STATE.latest, change: STATE.latestChange });
+          BTC.history.save(STATE.history);
+        }
+      }
+    } catch {}
+  }
   if (STATE.latest === STATE.last) return;
   STATE.last = STATE.latest;
   if (!STATE.pending) {
@@ -236,16 +281,14 @@ function tickPriceRender() {
     requestAnimationFrame(() => { renderPriceDOM(STATE.last, STATE.latestChange); STATE.pending = false; });
   }
 }
-setInterval(tickPriceRender, PRICE_TICK_MS);
+setInterval(tickPrice, PRICE_TICK_MS);
 
 // ── FEAR & GREED INDEX ────────────────────────────────────
 // CoinMarketCap's Fear & Greed index, refreshed every 6h server-side and
 // committed to data/fng.js (window.LOCAL_FNG) — the CMC API needs a key, so
 // it's never fetched from the client. CMC's index moves intraday, hence the
 // 6h cadence rather than daily. Shown above the 24h change, beside the price
-// decimals. Mirrors the CDC strip's file + localStorage caching.
-const FNG_STORAGE_KEY = BTC.keys.fng;
-const FNG_TTL_MS      = 60 * 60 * 1000;               // re-read the data file hourly
+// decimals. Read directly from the bundled file; no localStorage tier.
 // colour ramp + staleness threshold/check live in shared.js (BTC.fng) — the
 // dashboard's gauge uses the identical ramp and the identical 48h threshold
 
@@ -254,21 +297,13 @@ function renderPrice() {
 }
 
 function loadFearGreed() {
-  // Tier 1: localStorage (read from the data file within the last hour)
-  try {
-    const cached = JSON.parse(localStorage.getItem(FNG_STORAGE_KEY));
-    if (cached && !isNaN(cached.value)) {
-      STATE.fearGreed = { value: cached.value, classification: cached.classification, updateTime: cached.updateTime };
-      if (Date.now() - cached.ts < FNG_TTL_MS) return;   // still fresh — skip re-read
-    }
-  } catch {}
-
-  // Tier 2: local data file (data/fng.js sets window.LOCAL_FNG)
+  // data/fng.js is always bundled and loaded before this script runs, so the
+  // old localStorage tier was a redundant copy of the same bytes — reading the
+  // global directly is faster and removes an hourly flash write on kiosk boxes
   const f = window.LOCAL_FNG;
   if (f && !isNaN(f.value)) {
     const updateTime = f.update_time || f.generated || '';
     STATE.fearGreed = { value: f.value, classification: f.classification, updateTime };
-    try { localStorage.setItem(FNG_STORAGE_KEY, JSON.stringify({ value: f.value, classification: f.classification, updateTime, ts: Date.now() })); } catch {}
     renderPrice();
   }
 }
@@ -340,21 +375,8 @@ function connect(key) {
   };
 
   ws.onmessage = (e) => {
-    // every parse() does a bare JSON.parse — a non-JSON frame (an OKX "pong",
-    // a proxy's HTML error body, a truncated payload) must fail soft here
-    // rather than throwing out of the event handler
-    let result;
-    try { result = exchange.parse(e.data); } catch { return; }
-    if (!result || !result.price) return;
-    STATE.latest = result.price;
-    if (result.change !== null && !isNaN(result.change)) STATE.latestChange = result.change;
-    STATE.lastUpdated = Date.now();
-    loadingEl.classList.remove('active');
-
-    if (!STATE.history.length) {
-      STATE.history.push({ ts: Date.now(), price: STATE.latest, change: STATE.latestChange });
-      BTC.history.save(STATE.history);
-    }
+    // store, don't parse — tickPrice() samples the latest raw message at 1 Hz
+    STATE.pendingRaw = e.data;
   };
 }
 
@@ -512,21 +534,14 @@ document.addEventListener('visibilitychange', () => {
 const cdcStrip = document.getElementById('cdc-strip');
 
 async function fetchCDCBlocks() {
-  // Tier 1: localStorage (fresh within 1 hour)
-  try {
-    const cached = JSON.parse(localStorage.getItem(CDC_STORAGE_KEY));
-    if (cached && Date.now() - cached.ts < CDC_TTL_MS && cached.blocks.length === 30 && cached.blocks[0]?.diff != null) return cached.blocks;
-  } catch {}
-
-  // Tier 2: local data file (data/cdc.js sets window.LOCAL_CDC). This is the
-  // only tier that ever actually runs — data/cdc.js is always bundled and
-  // loaded, so it always satisfies the check below. There used to be a
-  // Kraken REST fallback here, computing its own EMA; it never ran (this
-  // tier always returns first) and has been removed along with its calcEMA().
-  // A missing/malformed data file falls through to renderCDC()'s "CDC
-  // unavailable" state (or keeps whatever was last rendered).
+  // data/cdc.js is always bundled and loaded before this script runs, so the
+  // old localStorage tier was a redundant copy of the same bytes — reading the
+  // global directly removes an hourly flash write on kiosk boxes. There used
+  // to be a Kraken REST fallback here, computing its own EMA; it never ran
+  // (this tier always returns first) and has been removed along with its
+  // calcEMA(). A missing/malformed data file falls through to renderCDC()'s
+  // "CDC unavailable" state (or keeps whatever was last rendered).
   if (window.LOCAL_CDC?.blocks?.length === 30 && window.LOCAL_CDC.blocks[0]?.diff != null) {
-    try { localStorage.setItem(CDC_STORAGE_KEY, JSON.stringify({ ts: Date.now(), blocks: window.LOCAL_CDC.blocks })); } catch {}
     return window.LOCAL_CDC.blocks;
   }
 

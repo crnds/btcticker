@@ -34,29 +34,43 @@ fi
 
 info "Browser: $BROWSER"
 
-# Suppress Firefox first-run dialogs
+# Firefox: dedicated kiosk profile with low-memory / low-write prefs.
+# The profile lives inside the project dir so it never collides with a normal
+# browsing profile and can be reset by simply deleting the directory.
 if [[ "$BROWSER" == firefox* ]]; then
-  # prefer the default-release profile (modern Firefox); fall back to any *.default*
-  PROFILE_DIR=$(find "$HOME/.mozilla/firefox" -maxdepth 1 -name "*.default-release" -type d 2>/dev/null | head -1 || true)
-  [[ -z "$PROFILE_DIR" ]] && \
-    PROFILE_DIR=$(find "$HOME/.mozilla/firefox" -maxdepth 1 -name "*.default*" -type d 2>/dev/null | head -1 || true)
-  if [[ -n "$PROFILE_DIR" ]]; then
-    # sentinel keeps re-runs from appending duplicate prefs
-    if grep -q 'btcticker-kiosk prefs' "$PROFILE_DIR/user.js" 2>/dev/null; then
-      info "Firefox first-run prefs already present"
-    else
-      cat >> "$PROFILE_DIR/user.js" <<'PREFS'
-// btcticker-kiosk prefs
+  PROFILE_DIR="$DIR/.firefox-kiosk"
+  mkdir -p "$PROFILE_DIR"
+  # sentinel keeps re-runs from appending duplicate prefs
+  if grep -q 'btcticker-kiosk prefs' "$PROFILE_DIR/user.js" 2>/dev/null; then
+    info "Firefox kiosk prefs already present"
+  else
+    cat >> "$PROFILE_DIR/user.js" <<'PREFS'
+// btcticker-kiosk prefs — low RAM, low write, file:// kiosk
 user_pref("browser.startup.firstrunSkipsHomepage", true);
 user_pref("browser.shell.checkDefaultBrowser", false);
 user_pref("datareporting.policy.dataSubmissionPolicyAccepted", true);
 user_pref("datareporting.policy.dataSubmissionPolicyNotifiedTime", "9999999999999");
 user_pref("browser.rights.3.shown", true);
+user_pref("browser.cache.disk.enable", false);
+user_pref("browser.cache.disk_cache_ssl", false);
+user_pref("browser.sessionstore.resume_from_crash", false);
+user_pref("browser.sessionstore.interval", 1800000);
+user_pref("browser.sessionhistory.max_total_viewers", 0);
+user_pref("browser.tabs.firefox-view", false);
+user_pref("extensions.pocket.enabled", false);
+user_pref("browser.newtabpage.activity-stream.feeds.topsites", false);
+user_pref("browser.newtabpage.activity-stream.feeds.section.topstories", false);
+user_pref("datareporting.healthreport.uploadEnabled", false);
+user_pref("toolkit.telemetry.enabled", false);
+user_pref("browser.safebrowsing.malware.enabled", false);
+user_pref("browser.safebrowsing.phishing.enabled", false);
+user_pref("network.prefetch-next", false);
+user_pref("dom.serviceWorkers.enabled", false);
+user_pref("dom.push.enabled", false);
+user_pref("media.peerconnection.enabled", false);
+user_pref("accessibility.force_disabled", 1);
 PREFS
-      info "Firefox first-run suppressed"
-    fi
-  else
-    warn "No Firefox profile found — first-run dialogs may appear on first launch"
+    info "Firefox kiosk prefs written"
   fi
 fi
 
@@ -68,7 +82,9 @@ mkdir -p "$HOME/.local/bin"
   echo 'xset s off -dpms s noblank 2>/dev/null || true'
   case "$BROWSER" in
     firefox-esr|firefox)
-      echo "exec \"$BROWSER\" --kiosk \"$FILE_URL\""
+      # --no-remote prevents attaching to an already-running Firefox; the
+      # dedicated profile keeps kiosk prefs isolated from normal browsing
+      echo "exec \"$BROWSER\" --kiosk --no-remote --profile \"$DIR/.firefox-kiosk\" \"$FILE_URL\""
       ;;
     *)
       # background sync/extensions/translate services buy nothing on a

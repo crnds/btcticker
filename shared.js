@@ -134,6 +134,11 @@
     return null;
   };
 
+  // last-written tiers JSON, so we only touch localStorage when the reading
+  // actually changed — fee tiers move on block timescales (~10 min), not every
+  // minute, and on flash-backed kiosk storage every avoided write counts
+  let lastFeesTiersJson = '';
+
   // fetch + derive + cache-write; returns { tiers, ts }, or null when
   // mempool.space reports no projected blocks (not an error). Throws on
   // network failure so each page keeps its own error UX — the ticker
@@ -142,7 +147,11 @@
     const tiers = fees.deriveTiers(await BTC.fetchJSON(fees.URL));
     if (!tiers) return null;
     const ts = Date.now();
-    try { localStorage.setItem(fees.STORAGE_KEY, JSON.stringify({ ts, tiers })); } catch {}
+    const tiersJson = JSON.stringify(tiers);
+    if (tiersJson !== lastFeesTiersJson) {
+      lastFeesTiersJson = tiersJson;
+      try { localStorage.setItem(fees.STORAGE_KEY, JSON.stringify({ ts, tiers })); } catch {}
+    }
     return { tiers, ts };
   };
 

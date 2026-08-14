@@ -4,6 +4,7 @@
   --border: #1e1e1e;
   --text: #e0e0e0;
   --text2: #ccc;
+  --text-dim: rgba(255,255,255,0.5);
   --muted: #555;
   --faint: #444;
   --faint2: #333;
@@ -13,12 +14,28 @@
   --up: #00e676;
   --down: #ff1744;
   --line: rgba(255,255,255,0.12);
+  --badge-bg: rgba(255,255,255,0.05);
 }
 
+/* JetBrains Mono, subset to printable ASCII + … + —, at two weights: 800 for the
+   price and the pill values, 400 for every small label. One family for the whole
+   UI — the labels used to say `font-family: monospace`, which is SF Mono on macOS
+   and Roboto Mono in the car's WebView, so the kiosk never matched development.
+   font-display: block on both, deliberately (see OPUS-PLAN.md): swapping in a
+   fallback renders the price at a different width inside #price's
+   overflow:hidden + nowrap, and a briefly blank wall display beats a clipped
+   wrong-looking price followed by a reflow. */
 @font-face {
-  font-family: 'Bebas Neue';
-  src: url('assets/bebas-neue-400.woff2') format('woff2');
+  font-family: 'JetBrains Mono';
+  src: url('assets/jetbrains-mono-400.woff2') format('woff2');
   font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('assets/jetbrains-mono-800.woff2') format('woff2');
+  font-weight: 800;
   font-style: normal;
   font-display: block;
 }
@@ -34,7 +51,7 @@
 body {
   background: var(--bg);
   height: 100vh;
-  font-family: 'Bebas Neue', sans-serif;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   /* the fee bar, price and CDC strip each get a reserved grid row so they
      can't grow into each other — replaces independently vw/vh-anchored
      absolute positioning, which had no idea the others existed. Absolutely
@@ -70,6 +87,8 @@ body {
   /* the menu dropdown escapes this row and overlays the price below it */
   position: relative;
   z-index: 100;
+  /* isolate layout so a fee/clock text change can't force a full-page reflow */
+  contain: layout;
 }
 .topbar-side {
   display: flex;
@@ -100,19 +119,36 @@ body {
   gap: clamp(4px, 2.4cqh, 20px);
   min-width: 0;
 }
+/* The price is sized from its own digit count, not from a fixed fraction of the
+   row. The old `min(34cqw, 66cqh)` was always decided by the height term in
+   landscape — 66cqh of a 560px row is 370px against the 586px the width term
+   offered — so widening the screen did nothing and the price sat in ~45% of
+   dead gutter. A monospace makes the fix exact rather than approximate: every
+   glyph advances by --adv, so the rendered width in em is just a character
+   count and the size that fills the row can be divided out. No measurement
+   pass, no JS autofit, and no way to clip as BTC gains a digit.
+   --price-chars is published by app.js (renderPriceDOM); --adv is JetBrains
+   Mono's measured digit advance. Both must be revisited together if the face
+   changes — a face with a different advance silently mis-fits otherwise. */
 .price-figure {
-  font-size: min(34cqw, 66cqh);
-  font-weight: 400;
+  --price-chars: 6;   /* fallback for first paint, before app.js has a price */
+  --adv: 0.60;
+  --dec-scale: 0.38;
+  /* integer run at 1em + the dimmed ".dd" (3 glyphs) at --dec-scale */
+  --price-em: calc((var(--price-chars) + 3 * var(--dec-scale)) * var(--adv));
+  /* 100cqw is #price's content box, so its padding-inline stays as the gutter.
+     The cqh term is now only a guard for tall-and-narrow (portrait) windows;
+     in landscape the width term binds, which is the entire point. */
+  font-size: min(calc(100cqw / var(--price-em)), 120cqh);
+  font-weight: 800;
   color: var(--text);
-  letter-spacing: 0;
+  letter-spacing: 0;   /* any tracking here has to be folded into --price-em */
   white-space: nowrap;
   user-select: none;
-  transform: scaleY(1.25);
-  transform-origin: center center;
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
-.price-figure .dec { color: rgba(255,255,255,0.5); font-size: 0.38em; }
+.price-figure .dec { color: var(--text-dim); font-size: 0.38em; }
 
 /* Fear & Greed + 24h change — labelled pills in the top-right of the top bar,
    next to the fullscreen button. Both spans carry [hidden] when their metric
@@ -128,22 +164,29 @@ body {
 .badge {
   display: inline-flex;
   align-items: center;
-  font-family: 'Bebas Neue', sans-serif;
-  font-weight: 400;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 800;
   line-height: 1;
   white-space: nowrap;
   /* cq units resolve against the `ticker` container (the whole page), not the
      price row these used to live in. Every term is 3x the size the badges were
-     first given in the top bar; the em-based padding and label scale with it. */
-  font-size: clamp(27px, min(9cqw, 10.8cqh), 66px);
-  background: rgba(255,255,255,0.05);
+     first given in the top bar; the em-based padding and label scale with it.
+     The cqw growth terms here and in the two queries below were cut by ~a third
+     when the face went from condensed Bebas to a 0.60em-advance monospace: at
+     equal font-size a pill is now ~1.5x wider, and .topbar-right doesn't shrink,
+     so the old numbers would squeeze the fee bar exactly as described below. The
+     cqh term is untouched — it only ever binds in landscape, where the 66px cap
+     is already the limit and there is no width pressure. */
+  font-size: clamp(27px, min(6cqw, 10.8cqh), 66px);
+  background: var(--badge-bg);
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 0.3em 0.75em;
 }
 .badge::before {
   content: attr(data-label);
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-weight: 400;
   font-size: 0.55em;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -165,12 +208,12 @@ body {
    it needs). Below 700px the growth term eases back so both fit one row; the
    full 3x still applies at every width above that. */
 @container ticker (max-width: 700px) {
-  .badge { font-size: clamp(14px, min(6cqw, 10.8cqh), 44px); }
+  .badge { font-size: clamp(14px, min(4cqw, 10.8cqh), 44px); }
 }
 /* phone widths: one more step down, so the fee numbers stay whole rather than
    the badges keeping their size at the fee bar's expense */
 @container ticker (max-width: 400px) {
-  .badge { font-size: clamp(12px, min(4.6cqw, 10.8cqh), 26px); }
+  .badge { font-size: clamp(12px, min(3cqw, 10.8cqh), 26px); }
 }
 
 #status-row {
@@ -184,7 +227,7 @@ body {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: clamp(7px, 1.8cqmin, 11px);
   color: var(--faint);
   user-select: none;
@@ -204,21 +247,36 @@ body {
 #ws-pulse.reconnecting { background: var(--down); }
 
 #clock {
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: clamp(8px, 2.6cqmin, 14pt);
   color: var(--faint);
   font-variant-numeric: tabular-nums;
   user-select: none;
 }
 
-/* Night Mode: collapses every colour to a dim red-only luminance mapping
-   (see the feColorMatrix def in index.html) — blue/green channels are zeroed
-   entirely rather than just desaturated, matching red-light night-vision
-   practice so the display doesn't disturb sleep in a dark room. Applied to
-   body (not html) so it shares the same box as the absolute-positioned
-   children it becomes the containing block for. */
+/* Night Mode: swaps the palette to a red-only variant instead of the old
+   full-page SVG feColorMatrix filter. The filter forced Firefox to composite
+   and filter the entire viewport on every price repaint; a class + variable
+   swap repaints only what changed and costs nothing extra per frame. The
+   green/blue channels are still effectively zeroed because every colour in the
+   override is red-derived. */
 body.night-mode {
-  filter: url(#night-red-filter);
+  --bg: #050000;
+  --surface: #0a0000;
+  --border: #220000;
+  --text: #ff6666;
+  --text2: #cc5555;
+  --text-dim: #994444;
+  --muted: #662222;
+  --faint: #552222;
+  --faint2: #441111;
+  --hover: #aa4444;
+  --accent: #ff3333;
+  --accent-hover: #ff5555;
+  --up: #ff3333;
+  --down: #ff3333;
+  --line: rgba(255,0,0,0.12);
+  --badge-bg: rgba(255,0,0,0.05);
 }
 
 /* shared by the menu toggle and fullscreen toggle — both are in-flow,
@@ -268,7 +326,7 @@ body.night-mode {
   text-align: left;
   text-decoration: none;
   padding: 8px 16px;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 12px;
   color: var(--muted);
   cursor: pointer;
@@ -288,7 +346,7 @@ body.night-mode {
   border-top: 1px solid var(--border);
   margin-top: 4px;
   padding: 10px 16px 4px;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -302,7 +360,7 @@ body.night-mode {
   width: 100%;
   padding: 8px 16px;
   white-space: nowrap;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 12px;
   color: var(--muted);
   cursor: pointer;
@@ -350,7 +408,7 @@ body.night-mode {
   margin: auto;
   width: fit-content;
   height: fit-content;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: min(6vw, 14vh);
   color: var(--text);
   letter-spacing: 4px;
@@ -378,6 +436,9 @@ body.night-mode {
   height: clamp(44px, 20cqh, 155px);
   padding: 0 clamp(10px, 3cqw, 20px);
   user-select: none;
+  /* bars are rebuilt via innerHTML on data changes; containment keeps that
+     layout/paint work scoped to the strip instead of the whole page */
+  contain: layout paint;
 }
 #cdc-strip::after {
   content: '';
@@ -404,7 +465,7 @@ body.night-mode {
 .cdc-error {
   margin: 8px auto 0;
   text-align: center;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 11px;
   color: var(--faint);
 }
@@ -430,7 +491,7 @@ body.night-mode {
      end of the fee-val clamp, where the bar outgrows the icon buttons. */
   padding: clamp(4px, 1.6cqh, 12px) clamp(6px, 2cqw, 16px);
   padding-left: 0;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
   user-select: none;
 }
 .fee-group {
@@ -455,13 +516,17 @@ body.night-mode {
   font-size: clamp(7px, min(2.4cqw, 2.1cqh), 15px);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--text-dim);
   white-space: nowrap;
 }
 .fee-val {
   font-size: clamp(11px, min(5.4cqw, 5.4cqh), 32px);
   color: var(--accent);
-  font-weight: 700;
+  /* 800, not 700: those are the two weights actually shipped. A 700 request
+     would resolve up to the 800 face anyway, but only via CSS's weight-matching
+     fallback — naming the real weight keeps it out of synthetic-bold territory
+     if the shipped set ever changes. */
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
