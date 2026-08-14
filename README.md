@@ -43,11 +43,11 @@ Exchange WebSocket ──► app.js (browser) ──► requestAnimationFrame �
  ~100ms updates          24hr % change         1/s max
 ```
 
-The browser connects directly to the selected exchange's public WebSocket stream. Price snapshots are saved to `localStorage` every 5 minutes and pruned to a rolling 24 hr window — the last known price renders instantly on load before the socket connects.
+The browser connects directly to the selected exchange's public WebSocket stream. Price snapshots are saved to `localStorage` every 10 minutes and pruned to a rolling 24 hr window — the last known price renders instantly on load before the socket connects.
 
 The CDC Action Zone strip reads 30 days of daily OHLC data and renders a colour-coded EMA(12)/EMA(26) crossover bar chart at the bottom of the screen.
 
-**Kiosk hygiene, tuned for weak hardware.** This app is built to run unattended for weeks on low-power kiosk boxes, so a few things are deliberately conservative: `#price` updates in place (persistent DOM nodes, only the sub-value that changed is touched) rather than being rebuilt from an HTML string on every tick, since it's close to the largest painted area on the whole screen; the render/localStorage cadences above favor fewer writes and repaints over sub-second precision; and the page reloads itself once a day at 4am local time to reset the JS heap and any browser-level memory fragmentation, regardless of how leak-free the app itself is.
+**Kiosk hygiene, tuned for weak hardware.** This app is built to run unattended for weeks on low-power kiosk boxes, so a few things are deliberately conservative: WebSocket messages are sampled at the 1 Hz render cadence rather than parsed on arrival (busy streams arrive ~10x faster than the display paints); `#price` updates in place (persistent DOM nodes, only the sub-value that changed is touched) rather than being rebuilt from an HTML string on every tick, since it's close to the largest painted area on the whole screen; the render/localStorage cadences above favor fewer writes and repaints over sub-second precision; and the page reloads itself once a day at 4am local time to reset the JS heap and any browser-level memory fragmentation, regardless of how leak-free the app itself is.
 
 ---
 
@@ -120,7 +120,7 @@ The layout is container-query driven, so on a short or narrow screen it degrades
 
 A wall clock sits in the bottom-left, **pinned to Asia/Bangkok** regardless of the kiosk machine's own timezone or locale — a kiosk box with an unconfigured system clock still shows the right time. It ticks once a minute (aligned to the minute boundary, not a 1Hz interval) and also drives the Night Mode schedule below, since both need the same "what hour is it in Bangkok" answer.
 
-**Night Mode** collapses the entire page to a dim red-only rendering via an SVG `feColorMatrix` filter — the green and blue channels are zeroed outright rather than desaturated, matching red-light night-vision practice so a wall-mounted display doesn't light up a dark room. Two independent toggles in the `···` menu's **Night Mode** section:
+**Night Mode** swaps the page's CSS custom-property palette to a red-only variant — the green and blue channels are zeroed outright rather than desaturated, matching red-light night-vision practice so a wall-mounted display doesn't light up a dark room. (The old SVG `feColorMatrix` filter on `<body>` was replaced by the palette swap because it forced the browser to composite and filter the entire viewport on every repaint.) Two independent toggles in the `···` menu's **Night Mode** section:
 
 | Toggle | Behaviour |
 |---|---|
@@ -450,6 +450,8 @@ chromium-browser --kiosk --incognito index.html
 firefox --kiosk index.html
 ```
 
+`install.sh` builds the full kiosk setup for Linux: a dedicated Firefox profile at `.firefox-kiosk/` (with low-memory / low-write prefs, no session restore, no disk cache), a launcher at `~/.local/bin/btcticker-kiosk`, and an XDG autostart entry. Re-running the script is idempotent; delete `.firefox-kiosk/` to reset the kiosk profile.
+
 ---
 
 ## Local Storage Keys
@@ -458,10 +460,10 @@ firefox --kiosk index.html
 |---|---|
 | `btcticker_v1_history` | Price snapshots (rolling 24 hr) |
 | `btcticker_v1_exchange` | Last selected exchange |
-| `btcticker_v1_cdc` | CDC blocks cache (1 hr TTL) |
-| `btcticker_v1_fng` | Fear & Greed index cache (1 hr TTL) |
-| `btcticker_v2_fees` | Mempool fee tiers cache (60s TTL) — shared with the dashboard |
+| `btcticker_v2_fees` | Mempool fee tiers cache (60s TTL) — shared with the dashboard; written only when tiers change |
 | `btcticker_v1_visibility` | Per-metric show/hide preference: `fees`, `fng`, `change`, `cdc`, `nightSchedule`, `nightForce` (six keys) |
+
+The older `btcticker_v1_cdc` and `btcticker_v1_fng` cache keys are no longer written: `data/cdc.js` and `data/fng.js` are always bundled and loaded before `app.js`, so the ticker reads the CDC blocks and F&G index straight from `window.LOCAL_CDC` / `window.LOCAL_FNG`.
 
 Pre-v1 unversioned keys (`btcticker_history`, `btcticker_exchange`) are migrated automatically on first load. `shared.js` (`window.BTC.keys`) is the single source of truth for every key name above — both `app.js` and `db.html` read them by reference rather than re-typing the strings.
 
